@@ -559,7 +559,7 @@ function pararCancion() {
 
 function sonarCancion() {
     if (!cancion) {
-        cancion = new Audio("./cancion.mp3");
+        cancion = new Audio("./Cancion.mp3");
         cancion.addEventListener("ended", pararCancion);
     }
     cancion.currentTime = 0;
