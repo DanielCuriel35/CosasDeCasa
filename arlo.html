@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#F3F2EF">
+<title>La pelota de Arlo</title>
+
+<link rel="icon" type="image/png" href="./favicon.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,600..700,100&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+    --bg: #F3F2EF;
+    --surface: #FFFFFF;
+    --ink: #161616;
+    --muted: #7C7B78;
+    --rojo: #D7263D;
+}
+
+* { box-sizing: border-box }
+
+html, body { overscroll-behavior: none }
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
+
+main {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: max(18px, env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom));
+}
+
+.top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.volver {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: 0 1px 2px rgba(0,0,0,.05), 0 6px 16px -10px rgba(0,0,0,.3);
+}
+
+h1 {
+    flex: 1;
+    margin: 0;
+    font-family: "Fraunces", Georgia, serif;
+    font-variation-settings: "SOFT" 100;
+    font-weight: 650;
+    min-width: 0;
+    font-size: 24px;
+    letter-spacing: -.02em;
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.marcador {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.15;
+}
+
+.marcador strong {
+    display: block;
+    font-size: 24px;
+    font-weight: 700;
+}
+
+.marcador span {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.sala {
+    position: relative;
+    height: min(540px, calc(100vh - 200px));
+    min-height: 400px;
+    overflow: hidden;
+    border-radius: 26px;
+    background: #8C6A4A;
+    box-shadow: 0 10px 28px -14px rgba(0,0,0,.35);
+    touch-action: none;
+    cursor: grab;
+}
+
+canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.ayuda {
+    margin: 12px 4px 0;
+    color: var(--muted);
+    font-size: 14px;
+    text-align: center;
+}
+</style>
+</head>
+
+<body>
+<main>
+
+    <div class="top">
+        <a class="volver" href="./" aria-label="Volver a Cosas de Casa">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+        </a>
+        <h1>La pelota de Arlo</h1>
+        <div class="marcador">
+            <strong id="puntos">0</strong>
+            <span id="record">Mejor racha 0</span>
+        </div>
+    </div>
+
+    <div id="sala" class="sala">
+        <canvas id="lienzo" aria-label="Arrastra hacia atrás y suelta para tirar la pelota"></canvas>
+    </div>
+
+    <p class="ayuda">Arrastra hacia atrás y suelta, como un tirachinas. Tiene que rebotar justo las veces que pone arriba.</p>
+
+</main>
+
+<script src="personajes.js"></script>
+
+<script>
+/* ==========================================================
+   Arlo: blanco y peludo, orejas marrones, mancha canela en la
+   cara, hocico moteado, mancha marrón en el lomo y arnés negro.
+   Dibujado mirando a la derecha.
+   ========================================================== */
+
+function dibujoArlo({ paso = 0, cola = 0 } = {}) {
+    const T = "#1B1B1B", BL = "#FAF8F3", MA = "#6B4A35", CA = "#C98B55";
+    // patas: paso 0 = quieto, 1 y 2 = andando
+    const a = paso === 1 ? 14 : paso === 2 ? -14 : 0;
+    const pata = (x, ang) => `<g transform="rotate(${ang} ${x} 50)">
+            <rect x="${x - 4.5}" y="46" width="9" height="17" rx="4.5" fill="${BL}" stroke="${T}" stroke-width="2.2"/>
+            <path d="M${x - 2.5} 62v-2.5M${x} 62v-2.5M${x + 2.5} 62v-2.5" stroke="#9A948A" stroke-width="1.2" stroke-linecap="round"/>
+        </g>`;
+
+    return `<svg viewBox="0 0 100 72" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="50" cy="66" rx="34" ry="4" fill="#000" opacity=".14"/>
+        ${pata(30, -a)}${pata(64, a)}
+        <!-- cola peluda -->
+        <g transform="rotate(${cola} 22 34)">
+            <path d="M24 36C14 34 8 24 10 14c4 6 8 6 10 3 0 7 4 10 8 12z" fill="${BL}" stroke="${T}" stroke-width="2.2" stroke-linejoin="round"/>
+            <path d="M14 22c2 2 4 3 7 3M13 28c3 2 6 3 9 3" stroke="#D9D4CA" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+        </g>
+        <!-- cuerpo -->
+        <path d="M22 36c0-10 10-15 26-15s26 4 28 14c2 9-6 17-26 17S22 46 22 36z" fill="${BL}" stroke="${T}" stroke-width="2.4"/>
+        <path d="M26 32c3-6 9-8 14-7-2 5-8 8-14 7z" fill="#8A5A3B" opacity=".9"/>
+        <path d="M30 46c3 2 6 3 9 3M44 49c3 1 6 1 9 0" stroke="#D9D4CA" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+        ${pata(38, a)}${pata(70, -a)}
+        <!-- arnés -->
+        <path d="M58 22c3 9 3 20 0 29" stroke="${T}" stroke-width="5" fill="none" stroke-linecap="round"/>
+        <path d="M58 30h9" stroke="${T}" stroke-width="3.5" stroke-linecap="round"/>
+        <!-- cabeza -->
+        <path d="M66 22c0-10 7-16 16-16s14 6 14 14c0 3-1 5-3 6l3 2c1 4-2 7-6 7-6 0-10-2-13-4-7 0-11-4-11-9z" fill="${BL}" stroke="${T}" stroke-width="2.4" stroke-linejoin="round"/>
+        <!-- mancha canela y ceja -->
+        <path d="M74 10c4-4 12-4 16 1 1 4-1 7-5 8-5 0-9-3-11-9z" fill="${CA}"/>
+        <!-- oreja marrón caída -->
+        <path d="M70 9c-6 1-9 8-8 16 1 5 4 7 7 6 3-4 4-12 6-17-1-3-3-5-5-5z" fill="${MA}" stroke="${T}" stroke-width="2.2" stroke-linejoin="round"/>
+        <!-- ojo -->
+        <circle cx="84" cy="15" r="2.4" fill="${T}"/>
+        <circle cx="84.8" cy="14.2" r=".8" fill="#fff"/>
+        <!-- hocico moteado y nariz -->
+        <circle cx="88" cy="23" r=".9" fill="#5E5A55"/><circle cx="91" cy="25" r=".9" fill="#5E5A55"/><circle cx="87" cy="26" r=".8" fill="#5E5A55"/>
+        <ellipse cx="96" cy="21" rx="3.4" ry="2.8" fill="${T}"/>
+        <path d="M88 29c2 1 4 1 6 0" stroke="${T}" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+    </svg>`;
+}
+
+function imagen(svg) {
+    const img = new Image();
+    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+    return img;
+}
+
+const ARLO = {
+    quieto: imagen(dibujoArlo({ paso: 0, cola: 0 })),
+    cola: imagen(dibujoArlo({ paso: 0, cola: -18 })),
+    paso1: imagen(dibujoArlo({ paso: 1, cola: -8 })),
+    paso2: imagen(dibujoArlo({ paso: 2, cola: 8 }))
+};
+const DIEGO = FAMILIA.find(p => p.nombre === "Diego");
+const imgDiego = imagen(dibujo(DIEGO, { piernaA: 0, piernaB: 0 }));
+
+/* ---------- Lienzo ---------- */
+
+const sala = document.getElementById("sala");
+const lienzo = document.getElementById("lienzo");
+const ctx = lienzo.getContext("2d");
+const txtPuntos = document.getElementById("puntos");
+const txtRecord = document.getElementById("record");
+
+let W = 360, H = 480;
+const PARED = 16;               // grosor del rodapié
+const R = 11;                   // radio de la pelota
+
+// límites por donde se mueve la pelota
+let X1, X2, Y1, Y2, INICIO;
+
+function medir() {
+    const dpr = Math.min(3, window.devicePixelRatio || 1);
+    W = sala.clientWidth;
+    H = sala.clientHeight;
+    lienzo.width = Math.round(W * dpr);
+    lienzo.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    X1 = PARED + R; X2 = W - PARED - R;
+    Y1 = 74 + PARED + R; Y2 = H - PARED - R;
+    INICIO = { x: W / 2, y: H - 92 };
+}
+
+/* ---------- Estado ---------- */
+
+const ROCE = 1.05;              // cuánto frena el suelo
+const ELASTICO = .86;           // cuánto conserva al rebotar
+const VMAX = 1250;
+
+let estado = "apuntar";         // apuntar | rueda | arlo-va | arlo-vuelve
+let pelota, objetivo, rebotes, racha = 0, puntos = 0;
+let arrastre = null;            // { x0, y0, x, y }
+let arlo;                       // { x, y, dir, tiempo }
+let mensaje = null;             // { texto, hasta, bien }
+let ladrido = null;             // { texto, hasta }
+
+function leerRecord() {
+    try { return parseInt(localStorage.getItem("arlo-record"), 10) || 0; } catch (e) { return 0; }
+}
+function guardarRecord(n) {
+    try { localStorage.setItem("arlo-record", String(n)); } catch (e) { }
+}
+
+function nuevaRonda() {
+    // con racha alta piden más rebotes
+    const max = Math.min(6, 3 + Math.floor(racha / 2));
+    objetivo = 1 + Math.floor(Math.random() * max);
+    rebotes = 0;
+    pelota = { x: INICIO.x, y: INICIO.y, vx: 0, vy: 0 };
+    estado = "apuntar";
+}
+
+function sentarArlo() {
+    arlo = { x: INICIO.x + 56, y: INICIO.y + 30, dir: -1, tiempo: 0, conPelota: false };
+}
+
+/* ---------- Física ---------- */
+
+function mover(dt) {
+    const p = pelota;
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+
+    const golpe = (rapidez) => {
+        if (rapidez > 40) {
+            rebotes++;
+            if (navigator.vibrate) navigator.vibrate(12);
+        }
+    };
+
+    if (p.x < X1) { p.x = X1; golpe(Math.abs(p.vx)); p.vx = Math.abs(p.vx) * ELASTICO; }
+    if (p.x > X2) { p.x = X2; golpe(Math.abs(p.vx)); p.vx = -Math.abs(p.vx) * ELASTICO; }
+    if (p.y < Y1) { p.y = Y1; golpe(Math.abs(p.vy)); p.vy = Math.abs(p.vy) * ELASTICO; }
+    if (p.y > Y2) { p.y = Y2; golpe(Math.abs(p.vy)); p.vy = -Math.abs(p.vy) * ELASTICO; }
+
+    const f = Math.exp(-ROCE * dt);
+    p.vx *= f; p.vy *= f;
+
+    // se va parando del todo
+    const v = Math.hypot(p.vx, p.vy);
+    if (v < 60) { p.vx *= .9; p.vy *= .9; }
+    if (v < 9) { p.vx = 0; p.vy = 0; terminarTiro(); }
+}
+
+function terminarTiro() {
+    const ahora = performance.now();
+    if (rebotes === objetivo) {
+        racha++;
+        puntos++;
+        mensaje = { texto: "¡Justo!", hasta: ahora + 1800, bien: true };
+        if (racha > leerRecord()) guardarRecord(racha);
+    } else {
+        racha = 0;
+        mensaje = {
+            texto: rebotes > objetivo ? `¡Te has pasado! (${rebotes})` : `Te has quedado corto (${rebotes})`,
+            hasta: ahora + 1800, bien: false
+        };
+    }
+    txtPuntos.textContent = puntos;
+    txtRecord.textContent = `Racha ${racha} · Mejor ${leerRecord()}`;
+    txtRecord.title = "Racha actual y mejor racha";
+    estado = "arlo-va";
+    ladrido = { texto: "¡Guau!", hasta: ahora + 900 };
+}
+
+/* ---------- Arlo va y vuelve ---------- */
+
+const VEL_ARLO = 300;
+
+function andarHacia(tx, ty, dt) {
+    const dx = tx - arlo.x, dy = ty - arlo.y, d = Math.hypot(dx, dy);
+    if (Math.abs(dx) > 2) arlo.dir = dx > 0 ? 1 : -1;
+    arlo.tiempo += dt;
+    if (d < VEL_ARLO * dt) { arlo.x = tx; arlo.y = ty; return true; }
+    arlo.x += dx / d * VEL_ARLO * dt;
+    arlo.y += dy / d * VEL_ARLO * dt;
+    return false;
+}
+
+// La boca de Arlo está delante; se queda a un lado de la pelota para cogerla
+function bocaDeArlo() {
+    return { x: arlo.x + arlo.dir * 40, y: arlo.y - 26 };
+}
+
+function actualizar(dt) {
+    if (estado === "rueda") mover(dt);
+
+    if (estado === "arlo-va") {
+        const lado = pelota.x > arlo.x ? -1 : 1;
+        // los pies de Arlo, para que la boca quede sobre la pelota
+        let tx = pelota.x + lado * 40, ty = pelota.y + 26;
+        tx = Math.min(Math.max(tx, 50), W - 50);
+        ty = Math.min(Math.max(ty, 74 + PARED + 34), H - PARED - 4);
+        if (andarHacia(tx, ty, dt)) {
+            arlo.dir = pelota.x >= arlo.x ? 1 : -1;
+            arlo.conPelota = true;
+            estado = "arlo-vuelve";
+        }
+    }
+
+    if (estado === "arlo-vuelve") {
+        const llegado = andarHacia(INICIO.x + 56, INICIO.y + 30, dt);
+        const b = bocaDeArlo();
+        pelota.x = b.x; pelota.y = b.y;
+        if (llegado) {
+            arlo.dir = -1;
+            arlo.conPelota = false;
+            ladrido = { texto: mensaje && mensaje.bien ? "¡Guau guau! 🐾" : "¡Otra, otra!", hasta: performance.now() + 1400 };
+            arlo.contento = performance.now() + 1400;
+            nuevaRonda();
+        }
+    }
+}
+
+/* ---------- Dibujo ---------- */
+
+function rr(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+}
+
+function pintarSala() {
+    // suelo de tarima
+    const top = 74;
+    ctx.fillStyle = "#D8B98E";
+    ctx.fillRect(0, top, W, H - top);
+    ctx.strokeStyle = "rgba(120, 85, 45, .22)";
+    ctx.lineWidth = 1.5;
+    for (let y = top + 34, fila = 0; y < H; y += 34, fila++) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+        for (let x = (fila % 2) * 70 + 40; x < W; x += 140) {
+            ctx.beginPath(); ctx.moveTo(x, y - 34); ctx.lineTo(x, y); ctx.stroke();
+        }
+    }
+
+    // alfombra
+    rr(W * .18, top + (H - top) * .32, W * .64, (H - top) * .3, 18);
+    ctx.fillStyle = "rgba(215, 38, 61, .14)";
+    ctx.fill();
+    ctx.strokeStyle = "rgba(215, 38, 61, .3)";
+    ctx.setLineDash([6, 6]);
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // paredes (rodapié)
+    ctx.fillStyle = "#F4EFE6";
+    ctx.fillRect(0, top, W, PARED);
+    ctx.fillRect(0, top, PARED, H - top);
+    ctx.fillRect(W - PARED, top, PARED, H - top);
+    ctx.fillRect(0, H - PARED, W, PARED);
+    ctx.strokeStyle = "#1B1B1B";
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(PARED, top + PARED, W - PARED * 2, H - top - PARED * 2);
+
+    // cartel de arriba
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(0, 0, W, top);
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#7C7B78";
+    ctx.font = "700 12px 'DM Sans', system-ui, sans-serif";
+    ctx.fillText("REBOTES", W / 2, 22);
+
+    // círculos: tantos como el objetivo, rellenos según los rebotes
+    const n = objetivo, tam = 22, hueco = 8;
+    const ancho = n * tam + (n - 1) * hueco;
+    for (let i = 0; i < n; i++) {
+        const cx = W / 2 - ancho / 2 + i * (tam + hueco) + tam / 2;
+        ctx.beginPath(); ctx.arc(cx, 46, tam / 2, 0, Math.PI * 2);
+        ctx.fillStyle = i < rebotes ? "#D7263D" : "#ECEAE6";
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = "#1B1B1B";
+        ctx.stroke();
+    }
+    if (rebotes > n) {
+        ctx.fillStyle = "#D7263D";
+        ctx.font = "800 15px 'DM Sans', system-ui, sans-serif";
+        ctx.fillText(`+${rebotes - n}`, W / 2 + ancho / 2 + 22, 51);
+    }
+    ctx.fillStyle = "#1B1B1B";
+    ctx.font = "800 26px 'DM Sans', system-ui, sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText(objetivo, 18, 52);
+    ctx.textAlign = "right";
+    ctx.fillStyle = "#7C7B78";
+    ctx.font = "700 13px 'DM Sans', system-ui, sans-serif";
+    ctx.fillText(`llevas ${rebotes}`, W - 18, 50);
+    ctx.textAlign = "left";
+}
+
+function pintarPelota(p) {
+    ctx.fillStyle = "rgba(0,0,0,.15)";
+    ctx.beginPath(); ctx.ellipse(p.x + 3, p.y + 6, R, R * .55, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(p.x, p.y, R, 0, Math.PI * 2);
+    ctx.fillStyle = "#D7E34A";               // pelota de tenis
+    ctx.fill();
+    ctx.lineWidth = 2.2;
+    ctx.strokeStyle = "#1B1B1B";
+    ctx.stroke();
+    ctx.strokeStyle = "#FFFFFF";
+    ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.arc(p.x - R * 1.1, p.y, R * .9, -.9, .9); ctx.stroke();
+    ctx.beginPath(); ctx.arc(p.x + R * 1.1, p.y, R * .9, Math.PI - .9, Math.PI + .9); ctx.stroke();
+}
+
+function pintarArlo(ahora) {
+    let img = ARLO.quieto;
+    const andando = estado === "arlo-va" || estado === "arlo-vuelve";
+    if (andando) img = Math.floor(arlo.tiempo * 9) % 2 ? ARLO.paso1 : ARLO.paso2;
+    else if (arlo.contento && ahora < arlo.contento) img = Math.floor(ahora / 120) % 2 ? ARLO.cola : ARLO.quieto;
+    else if (Math.floor(ahora / 900) % 4 === 0) img = ARLO.cola;
+
+    const w = 92, h = 66;
+    ctx.save();
+    ctx.translate(arlo.x, arlo.y);
+    if (arlo.dir < 0) ctx.scale(-1, 1);
+    if (img.complete) ctx.drawImage(img, -w / 2, -h + 6, w, h);
+    ctx.restore();
+}
+
+function bocadillo(texto, cx, abajo, oscuro = true) {
+    ctx.save();
+    ctx.font = "700 14px 'DM Sans', system-ui, sans-serif";
+    const w = ctx.measureText(texto).width + 22, h = 32;
+    const x = Math.min(Math.max(cx - w / 2, 8), W - w - 8), y = abajo - h - 8;
+    rr(x, y, w, h, 13);
+    ctx.fillStyle = oscuro ? "#1B1B1B" : "#FFFFFF"; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(cx - 6, y + h - 1); ctx.lineTo(cx, y + h + 7); ctx.lineTo(cx + 6, y + h - 1); ctx.fill();
+    ctx.fillStyle = oscuro ? "#fff" : "#1B1B1B";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(texto, x + 11, y + h / 2 + 1);
+    ctx.restore();
+}
+
+function pintar(ahora) {
+    ctx.clearRect(0, 0, W, H);
+    pintarSala();
+
+    // Diego, el que tira
+    const dw = 52, dh = 75;
+    if (imgDiego.complete) ctx.drawImage(imgDiego, INICIO.x - 82, INICIO.y - 22, dw, dh);
+
+    // Arlo y la pelota (lo que esté más abajo se pinta encima)
+    if (estado === "arlo-vuelve") {
+        pintarArlo(ahora);
+        pintarPelota(pelota);
+    } else {
+        if (pelota.y < arlo.y - 20) { pintarPelota(pelota); pintarArlo(ahora); }
+        else { pintarArlo(ahora); pintarPelota(pelota); }
+    }
+
+    // flecha para apuntar
+    if (estado === "apuntar" && arrastre) {
+        const dx = arrastre.x0 - arrastre.x, dy = arrastre.y0 - arrastre.y;
+        const d = Math.min(Math.hypot(dx, dy), 170);
+        if (d > 6) {
+            const ux = dx / Math.hypot(dx, dy), uy = dy / Math.hypot(dx, dy);
+            const largo = 30 + d * .9;
+            const ex = pelota.x + ux * largo, ey = pelota.y + uy * largo;
+            ctx.strokeStyle = "rgba(27,27,27,.75)";
+            ctx.lineWidth = 3.5;
+            ctx.lineCap = "round";
+            ctx.setLineDash([2, 9]);
+            ctx.beginPath(); ctx.moveTo(pelota.x + ux * (R + 6), pelota.y + uy * (R + 6)); ctx.lineTo(ex, ey); ctx.stroke();
+            ctx.setLineDash([]);
+            const a = Math.atan2(uy, ux);
+            ctx.fillStyle = "#1B1B1B";
+            ctx.beginPath();
+            ctx.moveTo(ex + Math.cos(a) * 10, ey + Math.sin(a) * 10);
+            ctx.lineTo(ex + Math.cos(a + 2.5) * 10, ey + Math.sin(a + 2.5) * 10);
+            ctx.lineTo(ex + Math.cos(a - 2.5) * 10, ey + Math.sin(a - 2.5) * 10);
+            ctx.fill();
+            // barrita de fuerza
+            rr(W - 30, H - 130, 10, 100, 5); ctx.fillStyle = "rgba(255,255,255,.7)"; ctx.fill();
+            const fh = 100 * d / 170;
+            rr(W - 30, H - 30 - fh, 10, fh, 5); ctx.fillStyle = "#1B1B1B"; ctx.fill();
+        }
+    }
+
+    if (estado === "apuntar" && !arrastre && puntos === 0 && racha === 0 && !mensaje) {
+        bocadillo("Arrastra hacia atrás y suelta", W / 2, INICIO.y - 30, false);
+    }
+
+    if (ladrido && ahora < ladrido.hasta) bocadillo(ladrido.texto, arlo.x, arlo.y - 64);
+
+    if (mensaje && ahora < mensaje.hasta) {
+        ctx.save();
+        ctx.textAlign = "center";
+        ctx.font = "650 28px 'Fraunces', Georgia, serif";
+        ctx.lineWidth = 6;
+        ctx.strokeStyle = "rgba(255,255,255,.9)";
+        ctx.strokeText(mensaje.texto, W / 2, 132);
+        ctx.fillStyle = mensaje.bien ? "#1B1B1B" : "#D7263D";
+        ctx.fillText(mensaje.texto, W / 2, 132);
+        ctx.restore();
+    }
+}
+
+let antes = performance.now();
+function bucle(ahora) {
+    // pasos pequeños para que los rebotes sean exactos
+    let dt = Math.min(.05, (ahora - antes) / 1000);
+    antes = ahora;
+    while (dt > 0) { const s = Math.min(dt, 1 / 240); actualizar(s); dt -= s; }
+    pintar(ahora);
+    requestAnimationFrame(bucle);
+}
+
+/* ---------- Controles: tirachinas ---------- */
+
+function punto(e) {
+    const r = lienzo.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+
+sala.addEventListener("pointerdown", e => {
+    if (estado !== "apuntar") return;
+    e.preventDefault();
+    sala.setPointerCapture(e.pointerId);
+    const p = punto(e);
+    arrastre = { x0: p.x, y0: p.y, x: p.x, y: p.y };
+    sala.style.cursor = "grabbing";
+});
+
+sala.addEventListener("pointermove", e => {
+    if (!arrastre) return;
+    const p = punto(e);
+    arrastre.x = p.x; arrastre.y = p.y;
+});
+
+function soltar() {
+    if (!arrastre) return;
+    const dx = arrastre.x0 - arrastre.x, dy = arrastre.y0 - arrastre.y;
+    const d = Math.hypot(dx, dy);
+    arrastre = null;
+    sala.style.cursor = "grab";
+    if (d < 14 || estado !== "apuntar") return;
+    const fuerza = Math.min(d, 170) / 170;
+    const v = 120 + fuerza * (VMAX - 120);
+    pelota.vx = dx / d * v;
+    pelota.vy = dy / d * v;
+    rebotes = 0;
+    mensaje = null;
+    estado = "rueda";
+}
+
+sala.addEventListener("pointerup", soltar);
+sala.addEventListener("pointercancel", () => { arrastre = null; });
+
+window.addEventListener("resize", () => {
+    medir();
+    if (estado === "apuntar") { pelota.x = INICIO.x; pelota.y = INICIO.y; }
+    sentarArlo();
+});
+
+medir();
+sentarArlo();
+nuevaRonda();
+txtRecord.textContent = `Mejor racha ${leerRecord()}`;
+requestAnimationFrame(bucle);
+</script>
+
+</body>
+</html>

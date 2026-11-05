@@ -441,8 +441,8 @@ const munyecos = FAMILIA.map((p, i) => {
 
     el.addEventListener("click", () => {
         saludar(m);
-        // Secretos: 3 toques seguidos a Dani o a Macu abren su minijuego
-        const SECRETOS = { Daniel: "./botella.html", Macu: "./punto.html" };
+        // Secretos: 3 toques seguidos a Dani, Macu o Diego abren su minijuego
+        const SECRETOS = { Daniel: "./botella.html", Macu: "./punto.html", Diego: "./arlo.html" };
         if (!SECRETOS[m.nombre]) return;
         const ahora = performance.now();
         m.toques = ahora - (m.ultimoToque || 0) < 1200 ? (m.toques || 0) + 1 : 1;
