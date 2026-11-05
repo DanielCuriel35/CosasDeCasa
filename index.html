@@ -177,7 +177,7 @@ footer span {
 
 /* ---------- Muñecos que pasean ---------- */
 
-main { padding-bottom: calc(150px + env(safe-area-inset-bottom)) }
+main { padding-bottom: calc(170px + env(safe-area-inset-bottom)) }
 
 .paseo {
     position: fixed;
@@ -185,7 +185,7 @@ main { padding-bottom: calc(150px + env(safe-area-inset-bottom)) }
     bottom: 0;
     width: 100%;
     max-width: 480px;
-    height: calc(118px + env(safe-area-inset-bottom));
+    height: calc(140px + env(safe-area-inset-bottom));
     transform: translateX(-50%);
     pointer-events: none;
     z-index: 5;
@@ -206,8 +206,8 @@ main { padding-bottom: calc(150px + env(safe-area-inset-bottom)) }
     position: absolute;
     left: 0;
     bottom: calc(24px + env(safe-area-inset-bottom));
-    width: 58px;
-    height: 72px;
+    width: 60px;
+    height: 86px;
     padding: 0;
     border: none;
     background: none;
@@ -220,8 +220,8 @@ main { padding-bottom: calc(150px + env(safe-area-inset-bottom)) }
 
 .munyeco svg {
     display: block;
-    width: 58px;
-    height: 72px;
+    width: 60px;
+    height: 86px;
     overflow: visible;
     transition: transform .2s;
 }
@@ -249,7 +249,7 @@ main { padding-bottom: calc(150px + env(safe-area-inset-bottom)) }
 .bocadillo {
     position: absolute;
     left: 50%;
-    bottom: 78px;
+    bottom: 92px;
     padding: 7px 11px;
     border-radius: 14px;
     background: var(--ink);
@@ -265,7 +265,7 @@ main { padding-bottom: calc(150px + env(safe-area-inset-bottom)) }
 .bocadillo::after {
     content: "";
     position: absolute;
-    left: 50%;
+    left: var(--pico, 50%);
     bottom: -5px;
     width: 10px;
     height: 10px;
@@ -360,70 +360,107 @@ document.getElementById("saludo").textContent = `${saludo} · ${fecha}`;
 
 /* ---------- Muñecos que pasean ---------- */
 
-const ROJO = "#D7263D";
-const TINTA = "#161616";
+const TINTA = "#1B1B1B";
+const PIEL = "#F2CFB6";
 
-// Todos miran a la derecha; para ir a la izquierda se da la vuelta el dibujo
-const extras = {
-    // Daniel: las gafas rojas del logo
-    Daniel: `<g fill="none" stroke="${ROJO}" stroke-width="2.6">
-                <rect x="17" y="27" width="13" height="11" rx="4.5"/>
-                <rect x="33" y="27" width="13" height="11" rx="4.5"/>
-                <path d="M30 31.5q1.5-1.5 3 0"/>
-             </g>`,
-    // Diego: gorra con visera
-    Diego: `<path d="M15 21q1-11 16-11t15 10z" fill="${TINTA}"/>
-            <path d="M40 19.5q9-.5 12 2.5-6 1-13 .5z" fill="${TINTA}"/>
-            <circle cx="31" cy="10.5" r="2" fill="${ROJO}"/>`,
-    // Macu: moño
-    Macu: `<circle cx="30" cy="9" r="7" fill="#3A3936" stroke="${TINTA}" stroke-width="2.5"/>
-           <path d="M24 14.5q6 3 12 0" stroke="${ROJO}" stroke-width="3" fill="none" stroke-linecap="round"/>`,
-    // Marina: coletas
-    Marina: `<circle cx="10" cy="22" r="6" fill="#4A4946" stroke="${TINTA}" stroke-width="2.5"/>
-             <circle cx="50" cy="22" r="6" fill="#4A4946" stroke="${TINTA}" stroke-width="2.5"/>
-             <circle cx="14.5" cy="18" r="2" fill="${ROJO}"/>
-             <circle cx="45.5" cy="18" r="2" fill="${ROJO}"/>`
-};
-
+// Cada uno con su pelo, gafas, ropa y su frase. Todos miran a la derecha;
+// para ir a la izquierda se da la vuelta el dibujo.
 const FAMILIA = [
-    { nombre: "Daniel", tono: "#2F2E2C" },
-    { nombre: "Diego", tono: "#6C6A66" },
-    { nombre: "Macu", tono: "#A3A09B" },
-    { nombre: "Marina", tono: "#D8D5CF" }
+    {
+        nombre: "Daniel",
+        frase: "Ya está bueno, eh",
+        camiseta: "#F7F6F2", pantalon: "#8EA8C3", vel: 30,
+        detrasCabeza: "",
+        pelo: `<path d="M13 30Q11 11 32 10Q53 11 51 29Q47 22 41 24Q37 18 31 22Q25 18 20 24Q16 24 13 30Z" fill="#2A221E"/>
+               <circle cx="20" cy="15" r="5" fill="#2A221E"/><circle cx="28" cy="10.5" r="5.5" fill="#2A221E"/>
+               <circle cx="37" cy="10.5" r="5.5" fill="#2A221E"/><circle cx="45" cy="15" r="5" fill="#2A221E"/>`,
+        cara: `<path d="M33 46q3 2.5 6 0" fill="none" stroke="#2A221E" stroke-width="2.4" stroke-linecap="round"/>
+               <path d="M31 40.5q4-1.6 8 0" fill="none" stroke="#2A221E" stroke-width="1.6" stroke-linecap="round" opacity=".7"/>`,
+        gafas: { color: TINTA, grosor: 1.8, radio: 2 },
+        ropa: `<path d="M26 53q6 4 12 0" fill="none" stroke="#1F2A44" stroke-width="2.4" stroke-linecap="round"/>`
+    },
+    {
+        nombre: "Diego",
+        frase: "¡Cuánto trabaja mi hijo!",
+        camiseta: "#232323", pantalon: "#2F3B50", vel: 22,
+        detrasCabeza: "",
+        pelo: `<path d="M14 27Q13 13 22 11Q24 5 30 7.5Q34 3 39 7Q42 4.5 45 9Q51 13 50 27Q46 20 32 20Q18 20 14 27Z" fill="#B99C68"/>
+               <path d="M24 12q3-3 6-2M33 9.5q3-2.5 6-1" fill="none" stroke="#9C8152" stroke-width="1.6" stroke-linecap="round"/>`,
+        cara: `<path d="M15 33Q16 51 32 51Q48 51 49 33Q47 44 40 44Q36 40.5 32 41.5Q28 40.5 24 44Q17 44 15 33Z" fill="#A7A196"/>
+               <path d="M29 40.5q4-2 8 0" fill="none" stroke="#8C867B" stroke-width="2.6" stroke-linecap="round"/>`,
+        gafas: { color: TINTA, grosor: 3, radio: 1.6 },
+        ropa: ""
+    },
+    {
+        nombre: "Macu",
+        frase: "¡Arlo, que me dejes en paz!",
+        camiseta: "#EFE6D3", pantalon: "#E4DAC4", vel: 24,
+        detrasCabeza: "",
+        pelo: `<path d="M11 37Q7 9 32 9Q57 9 53 37Q52 41 48.5 41L49 26Q42 20 31 24Q22 20 15.5 28L16 41Q12 41 11 37Z" fill="#3D2B22"/>`,
+        cara: "",
+        gafas: { color: TINTA, grosor: 2, radio: 4 },
+        ropa: `<path d="M26 52.5l6 6 6-6" fill="none" stroke="#D6CBB3" stroke-width="2" stroke-linejoin="round"/>`
+    },
+    {
+        nombre: "Marina",
+        frase: "¡ESPERAAAA!",
+        camiseta: "#F4EFE7", pantalon: "#4B2D2A", vel: 38,
+        // pelo largo por detrás
+        detrasCabeza: `<path d="M12 28Q12 8 32 8Q52 8 52 28L53 62Q53 66 48 66L16 66Q11 66 11 62Z" fill="#5B3B29" stroke="${TINTA}" stroke-width="2.5"/>`,
+        // flequillo recto
+        pelo: `<path d="M13.5 29Q13 11 32 11Q51 11 50.5 29L50 25.5Q32 27.5 14 25.5Z" fill="#5B3B29"/>`,
+        cara: "",
+        gafas: null,
+        // patito amarillo en brazos
+        ropa: `<g transform="translate(36 60)">
+                   <ellipse cx="0" cy="3" rx="9" ry="7" fill="#F6C836" stroke="${TINTA}" stroke-width="2"/>
+                   <circle cx="2" cy="-5" r="5.5" fill="#F6C836" stroke="${TINTA}" stroke-width="2"/>
+                   <path d="M7 -5.5l4.5 1.5-4.5 1.5z" fill="#F08A24" stroke="${TINTA}" stroke-width="1.2" stroke-linejoin="round"/>
+                   <circle cx="3.6" cy="-6.2" r="1.1" fill="${TINTA}"/>
+               </g>`
+    }
 ];
 
-const FRASES = [
-    "¡Hola!", "¿Qué hay de cena?", "¡Se ha acabado la leche!", "¿Quién friega hoy?",
-    "¿Has mirado la agenda?", "¡Apúntalo en la lista!", "Tengo hambre…", "¡Me aburro!",
-    "¿Dónde están mis llaves?", "¡A la ducha!", "Cinco minutitos más…", "¿Bajas la basura?"
-];
+function dibujo(p) {
+    const g = p.gafas;
+    const gafas = g ? `<g fill="none" stroke="${g.color}" stroke-width="${g.grosor}">
+            <rect x="21.5" y="28" width="11" height="8.5" rx="${g.radio}"/>
+            <rect x="35" y="28" width="11" height="8.5" rx="${g.radio}"/>
+            <path d="M32.5 31.5q1.25-1.2 2.5 0"/>
+        </g>` : "";
 
-function dibujo({ nombre, tono }) {
-    const pupila = TINTA;
-    return `<svg viewBox="0 0 60 74" xmlns="http://www.w3.org/2000/svg">
-        <ellipse cx="30" cy="71" rx="15" ry="3" fill="#000" opacity=".1"/>
-        <line class="pierna-a" x1="23" y1="56" x2="23" y2="68" stroke="${TINTA}" stroke-width="4.5" stroke-linecap="round"/>
-        <line class="pierna-b" x1="37" y1="56" x2="37" y2="68" stroke="${TINTA}" stroke-width="4.5" stroke-linecap="round"/>
+    return `<svg viewBox="0 0 64 92" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="32" cy="89" rx="16" ry="3" fill="#000" opacity=".1"/>
+        <g class="pierna-a">
+            <line x1="26" y1="74" x2="26" y2="85" stroke="${p.pantalon}" stroke-width="6" stroke-linecap="round"/>
+            <ellipse cx="27.5" cy="86.5" rx="4.5" ry="2.6" fill="#fff" stroke="${TINTA}" stroke-width="1.8"/>
+        </g>
+        <g class="pierna-b">
+            <line x1="38" y1="74" x2="38" y2="85" stroke="${p.pantalon}" stroke-width="6" stroke-linecap="round"/>
+            <ellipse cx="39.5" cy="86.5" rx="4.5" ry="2.6" fill="#fff" stroke="${TINTA}" stroke-width="1.8"/>
+        </g>
         <g class="cuerpo">
-            <path d="M30 13c13 0 20 8 20 22v8c0 10-7 15-20 15S10 53 10 43v-8c0-14 7-22 20-22z"
-                  fill="${tono}" stroke="${TINTA}" stroke-width="3"/>
+            ${p.detrasCabeza}
+            <rect x="18" y="50" width="28" height="27" rx="11" fill="${p.camiseta}" stroke="${TINTA}" stroke-width="2.5"/>
+            <circle cx="32" cy="30" r="19" fill="${PIEL}" stroke="${TINTA}" stroke-width="2.5"/>
+            ${p.cara}
+            ${p.pelo}
             <g class="ojos">
-                <circle cx="23.5" cy="32.5" r="5" fill="#fff" stroke="${TINTA}" stroke-width="1.5"/>
-                <circle cx="39.5" cy="32.5" r="5" fill="#fff" stroke="${TINTA}" stroke-width="1.5"/>
-                <circle cx="25.3" cy="33" r="2.4" fill="${pupila}"/>
-                <circle cx="41.3" cy="33" r="2.4" fill="${pupila}"/>
+                <circle cx="27.5" cy="32.5" r="2.2" fill="${TINTA}"/>
+                <circle cx="40.5" cy="32.5" r="2.2" fill="${TINTA}"/>
             </g>
-            <circle cx="18" cy="41" r="3" fill="${ROJO}" opacity=".3"/>
-            <circle cx="44" cy="41" r="3" fill="${ROJO}" opacity=".3"/>
-            <path d="M28 42q3.5 3 7 0" fill="none" stroke="${TINTA}" stroke-width="2.4" stroke-linecap="round"/>
-            ${extras[nombre] || ""}
+            ${gafas}
+            <circle cx="22" cy="40" r="2.6" fill="#E8828B" opacity=".45"/>
+            <circle cx="46" cy="40" r="2.6" fill="#E8828B" opacity=".45"/>
+            ${p.nombre === "Diego" ? "" : `<path d="M31 43q3.5 3 7 0" fill="none" stroke="${TINTA}" stroke-width="2.2" stroke-linecap="round"/>`}
+            ${p.ropa}
         </g>
     </svg>`;
 }
 
 const paseo = document.getElementById("paseo");
 const quieto = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-const ANCHO = 58;
+const ANCHO = 60;
 
 const munyecos = FAMILIA.map((p, i) => {
     const el = document.createElement("button");
@@ -436,7 +473,7 @@ const munyecos = FAMILIA.map((p, i) => {
         ...p, el,
         x: 0,
         dir: Math.random() < .5 ? 1 : -1,
-        vel: 26 + Math.random() * 18,          // píxeles por segundo
+        vel: p.vel + Math.random() * 6,        // píxeles por segundo
         hasta: 0,                               // cuándo cambia de andar/parar
         anda: true,
         ocupado: 0                              // tiempo parado tras saltar
@@ -460,16 +497,35 @@ function saludar(m) {
     m.el.querySelector(".bocadillo")?.remove();
     const b = document.createElement("span");
     b.className = "bocadillo";
-    const frases = [`¡Soy ${m.nombre}!`, ...FRASES];
-    b.textContent = frases[Math.floor(Math.random() * frases.length)];
+    b.textContent = m.frase;
     m.el.appendChild(b);
 
+    // Que el bocadillo no se salga por los lados; el piquito sigue apuntando al muñeco
+    const w = b.offsetWidth;
+    const centro = m.x + ANCHO / 2;
+    const ok = Math.min(Math.max(centro, 8 + w / 2), paseo.clientWidth - 8 - w / 2);
+    b.style.left = `${ok - m.x}px`;
+    b.style.setProperty("--pico", `${w / 2 + (centro - ok)}px`);
+
+    // Si choca con otro bocadillo, se pone más arriba
+    const alto = 92;
+    for (let nivel = 0; nivel < 4; nivel++) {
+        b.style.bottom = `${alto + nivel * 44}px`;
+        const r = b.getBoundingClientRect();
+        const choca = [...paseo.querySelectorAll(".bocadillo")].some(o => {
+            if (o === b) return false;
+            const q = o.getBoundingClientRect();
+            return r.left < q.right + 4 && r.right > q.left - 4 && r.top < q.bottom + 4 && r.bottom > q.top - 4;
+        });
+        if (!choca) break;
+    }
+
     m.anda = false;
-    m.ocupado = 2.2;
+    m.ocupado = 2.6;
     colocar(m);
 
     clearTimeout(m.tBocadillo);
-    m.tBocadillo = setTimeout(() => b.remove(), 2200);
+    m.tBocadillo = setTimeout(() => b.remove(), 2600);
     setTimeout(() => m.el.classList.remove("salta"), 600);
 }
 
