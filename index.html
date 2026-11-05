@@ -314,6 +314,28 @@ main { padding-bottom: calc(170px + env(safe-area-inset-bottom)) }
 }
 @keyframes bocadillo { from { opacity: 0; transform: translate(-50%, 6px) scale(.8) } }
 
+/* ---------- Canción secreta (10 toques al logo) ---------- */
+
+#logo {
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    touch-action: manipulation;
+}
+
+#logo.toque { animation: toque .18s ease }
+#logo.baila { animation: bailar .5s ease-in-out infinite alternate }
+
+@keyframes toque {
+    50% { transform: scale(.94) rotate(-2deg) }
+}
+
+@keyframes bailar {
+    from { transform: rotate(-6deg) scale(1.02) }
+    to { transform: rotate(6deg) scale(1.08) }
+}
+
 @keyframes entrar {
     from { opacity: 0; transform: translateY(10px) }
 }
@@ -328,7 +350,7 @@ main { padding-bottom: calc(170px + env(safe-area-inset-bottom)) }
 <main>
 
     <header class="marca">
-        <img src="./logo.png" alt="" width="880" height="375">
+        <img id="logo" src="./logo.png" alt="" width="880" height="375" draggable="false">
         <h1>Cosas de Casa</h1>
         <p id="saludo" class="saludo">&nbsp;</p>
     </header>
@@ -515,6 +537,63 @@ if (!quieto) {
 }
 
 window.addEventListener("resize", repartir);
+
+/* ---------- Canción secreta: 10 toques seguidos al logo ---------- */
+
+const logo = document.getElementById("logo");
+let toques = 0, ultimoToque = 0, cancion = null, baile = null;
+
+function brincar(m) {
+    m.el.classList.remove("salta");
+    void m.el.offsetWidth;
+    m.el.classList.add("salta");
+    setTimeout(() => m.el.classList.remove("salta"), 600);
+}
+
+function pararCancion() {
+    if (cancion) { cancion.pause(); cancion.currentTime = 0; }
+    logo.classList.remove("baila");
+    clearInterval(baile);
+    baile = null;
+}
+
+function sonarCancion() {
+    if (!cancion) {
+        cancion = new Audio("./cancion.mp3");
+        cancion.addEventListener("ended", pararCancion);
+    }
+    cancion.currentTime = 0;
+    cancion.play().then(() => {
+        logo.classList.add("baila");
+        // los cuatro bailan mientras suena
+        baile = setInterval(() => brincar(munyecos[Math.floor(Math.random() * munyecos.length)]), 380);
+    }).catch(() => {
+        // todavía no hay canción subida
+        const m = munyecos[Math.floor(Math.random() * munyecos.length)];
+        const frase = m.frase;
+        m.frase = "Aún no hay canción…";
+        saludar(m);
+        m.frase = frase;
+    });
+}
+
+logo.addEventListener("click", () => {
+    if (baile) { pararCancion(); toques = 0; return; }
+
+    const ahora = performance.now();
+    toques = ahora - ultimoToque < 1200 ? toques + 1 : 1;
+    ultimoToque = ahora;
+
+    logo.classList.remove("toque");
+    void logo.offsetWidth;
+    logo.classList.add("toque");
+
+    if (toques >= 10) {
+        toques = 0;
+        sonarCancion();
+    }
+});
+
 </script>
 
 </body>
