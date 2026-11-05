@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#F3F2EF">
+<title>Bottle flip</title>
+
+<link rel="icon" type="image/png" href="./favicon.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,600..700,100&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+    --bg: #F3F2EF;
+    --surface: #FFFFFF;
+    --ink: #161616;
+    --muted: #7C7B78;
+    --rojo: #D7263D;
+}
+
+* { box-sizing: border-box }
+
+html, body { overscroll-behavior: none }
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
+
+main {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: max(18px, env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom));
+}
+
+.top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.volver {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: 0 1px 2px rgba(0,0,0,.05), 0 6px 16px -10px rgba(0,0,0,.3);
+}
+
+h1 {
+    flex: 1;
+    margin: 0;
+    font-family: "Fraunces", Georgia, serif;
+    font-variation-settings: "SOFT" 100;
+    font-weight: 650;
+    font-size: 28px;
+    letter-spacing: -.02em;
+}
+
+.marcador {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.15;
+}
+
+.marcador strong {
+    display: block;
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -.02em;
+}
+
+.marcador span {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.mesa {
+    position: relative;
+    height: min(460px, calc(100vh - 220px));
+    min-height: 360px;
+    overflow: hidden;
+    border-radius: 26px;
+    background: var(--surface);
+    box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 10px 28px -14px rgba(0,0,0,.25);
+    touch-action: none;
+    cursor: pointer;
+}
+
+canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.ayuda {
+    margin: 12px 4px 0;
+    color: var(--muted);
+    font-size: 14px;
+    text-align: center;
+}
+</style>
+</head>
+
+<body>
+<main>
+
+    <div class="top">
+        <a class="volver" href="./" aria-label="Volver a Cosas de Casa">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+        </a>
+        <h1>Bottle flip</h1>
+        <div class="marcador">
+            <strong id="puntos">0</strong>
+            <span id="record">Mejor racha 0</span>
+        </div>
+    </div>
+
+    <div id="mesa" class="mesa">
+        <canvas id="lienzo" aria-label="Mantén pulsado para coger fuerza y suelta para lanzar la botella"></canvas>
+    </div>
+
+    <p class="ayuda">Mantén pulsado para coger fuerza y suelta para lanzar. De pie: 1 punto. De tapón: 3.</p>
+
+</main>
+
+<script src="personajes.js"></script>
+
+<script>
+/* ---------- Lienzo ---------- */
+
+const mesa = document.getElementById("mesa");
+const lienzo = document.getElementById("lienzo");
+const ctx = lienzo.getContext("2d");
+const txtPuntos = document.getElementById("puntos");
+const txtRecord = document.getElementById("record");
+
+let W = 360, H = 420, MESA_Y = 360;
+
+function medir() {
+    const dpr = Math.min(3, window.devicePixelRatio || 1);
+    W = mesa.clientWidth;
+    H = mesa.clientHeight;
+    MESA_Y = H - 64;
+    lienzo.width = Math.round(W * dpr);
+    lienzo.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+/* ---------- Dani ---------- */
+
+const DANI = FAMILIA.find(p => p.nombre === "Daniel");
+const imgDani = new Image();
+imgDani.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(dibujo(DANI, { piernaA: 0, piernaB: 0 }));
+
+const ANIMOS = ["¡Toma!", "¡Fácil!", "¿Has visto eso?", "Soy un crack", "¡Otra!"];
+const TAPON = ["¡DE TAPÓN!", "¡¿Qué?!", "Esto no lo hace nadie"];
+
+let bocadillo = null;           // { texto, hasta }
+function decir(texto, ms = 1600) {
+    bocadillo = { texto, hasta: performance.now() + ms };
+}
+
+/* ---------- Estado ---------- */
+
+const BOT_W = 38, BOT_H = 104;
+const GRAV = 1900;
+const PERIODO = 2.0;            // segundos en llenar y vaciar la barra
+const TOL_PIE = .6, TOL_TAPON = .32;
+
+let estado = "quieta";          // quieta | cargando | vuela | cae | aterriza
+let carga = 0, cargaDesde = 0, ultimaFuerza = null;
+let vuelo = null;               // datos del lanzamiento
+let anim = null;                // animación al caer
+let angulo = 0, alto = 0, desplX = 0;
+let puntos = 0, racha = 0;
+
+function leerRecord() {
+    try { return parseInt(localStorage.getItem("botella-record"), 10) || 0; } catch (e) { return 0; }
+}
+function guardarRecord(n) {
+    try { localStorage.setItem("botella-record", String(n)); } catch (e) { }
+}
+txtRecord.textContent = `Mejor racha ${leerRecord()}`;
+
+function fuerzaAhora(t) {
+    // Barra que sube y baja en línea recta
+    const f = ((t - cargaDesde) / 1000 / PERIODO) % 1;
+    return f < .5 ? f * 2 : 2 - f * 2;
+}
+
+function lanzar(f) {
+    ultimaFuerza = f;
+    const v0 = 520 + 640 * f;                       // velocidad hacia arriba
+    const T = 2 * v0 / GRAV;                        // tiempo en el aire
+    const giroTotal = Math.PI * (.4 + 4.2 * f);     // vueltas que dará
+    const k = 1.6;                                  // el agua frena el giro
+    vuelo = { v0, T, giroTotal, k, desde: performance.now() };
+    estado = "vuela";
+}
+
+function normalizar(a) {
+    a = a % (Math.PI * 2);
+    if (a > Math.PI) a -= Math.PI * 2;
+    if (a < -Math.PI) a += Math.PI * 2;
+    return a;
+}
+
+function aterrizar() {
+    const a = normalizar(vuelo.giroTotal);
+    const ahora = performance.now();
+
+    if (Math.abs(a) < TOL_PIE) {
+        racha++;
+        puntos += 1;
+        anim = { tipo: "pie", desde: ahora, base: 0, error: a };
+        decir(ANIMOS[Math.floor(Math.random() * ANIMOS.length)]);
+    } else if (Math.abs(Math.abs(a) - Math.PI) < TOL_TAPON) {
+        racha++;
+        puntos += 3;
+        anim = { tipo: "tapon", desde: ahora, base: Math.PI, error: a - Math.sign(a) * Math.PI };
+        decir(TAPON[Math.floor(Math.random() * TAPON.length)], 2000);
+        if (navigator.vibrate) navigator.vibrate([40, 40, 40]);
+    } else {
+        // Se cae hacia el lado al que estaba inclinada
+        const lado = a >= 0 ? 1 : -1;
+        anim = { tipo: "cae", desde: ahora, de: a, a: lado * Math.PI / 2, lado };
+        racha = 0;
+        decir(DANI.frase, 1800);
+        if (navigator.vibrate) navigator.vibrate(60);
+    }
+
+    if (racha > leerRecord()) guardarRecord(racha);
+    txtPuntos.textContent = puntos;
+    txtRecord.textContent = `Racha ${racha} · Mejor ${leerRecord()}`;
+    estado = "aterriza";
+}
+
+/* ---------- Actualizar ---------- */
+
+function actualizar(ahora) {
+    if (estado === "cargando") carga = fuerzaAhora(ahora);
+
+    if (estado === "vuela") {
+        const t = Math.min((ahora - vuelo.desde) / 1000, vuelo.T);
+        alto = vuelo.v0 * t - GRAV * t * t / 2;
+        // Giro que se va frenando, y que termina justo en giroTotal
+        const e = 1 - Math.exp(-vuelo.k * t), eT = 1 - Math.exp(-vuelo.k * vuelo.T);
+        angulo = vuelo.giroTotal * e / eT;
+        if (t >= vuelo.T) { alto = 0; aterrizar(); }
+    }
+
+    if (estado === "aterriza") {
+        const t = (ahora - anim.desde) / 1000;
+
+        if (anim.tipo === "cae") {
+            const p = Math.min(1, t / .32);
+            const suave = 1 - Math.pow(1 - p, 3);
+            angulo = anim.de + (anim.a - anim.de) * suave;
+            desplX = anim.lado * suave * 18;
+            // al tumbarse baja el centro
+            if (t > 1.3) volverAPoner();
+        } else {
+            // Pequeño bamboleo hasta quedarse quieta
+            angulo = anim.base + anim.error * Math.exp(-t * 7) * Math.cos(t * 26);
+            if (t > .9) {
+                angulo = anim.base;
+                if (anim.tipo === "tapon" && t > 1.4) volverAPoner();
+                if (anim.tipo === "pie") { estado = "quieta"; angulo = 0; }
+            }
+        }
+    }
+}
+
+function volverAPoner() {
+    estado = "quieta";
+    angulo = 0;
+    alto = 0;
+    desplX = 0;
+}
+
+/* ---------- Dibujo ---------- */
+
+
+function rr(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+}
+
+// Silueta de la botella, centrada en (0,0)
+function silueta() {
+    const w = BOT_W / 2, h = BOT_H / 2;
+    ctx.beginPath();
+    ctx.moveTo(-6, -h + 10);
+    ctx.lineTo(-6, -h + 18);
+    ctx.bezierCurveTo(-6, -h + 30, -w, -h + 30, -w, -h + 44);
+    ctx.lineTo(-w, h - 8);
+    ctx.quadraticCurveTo(-w, h, -w + 8, h);
+    ctx.lineTo(w - 8, h);
+    ctx.quadraticCurveTo(w, h, w, h - 8);
+    ctx.lineTo(w, -h + 44);
+    ctx.bezierCurveTo(w, -h + 30, 6, -h + 30, 6, -h + 18);
+    ctx.lineTo(6, -h + 10);
+    ctx.closePath();
+}
+
+function pintarBotella(cx, cy, ang) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(ang);
+
+    // plástico
+    silueta();
+    ctx.fillStyle = "rgba(214, 232, 240, .55)";
+    ctx.fill();
+
+    // agua: un tercio de la botella, siempre hacia abajo de verdad
+    ctx.save();
+    silueta();
+    ctx.clip();
+    ctx.rotate(-ang);
+    const c = Math.abs(Math.cos(ang)), sn = Math.abs(Math.sin(ang));
+    const fondo = (BOT_H / 2) * c + (BOT_W / 2) * sn;
+    const nivel = fondo - (36 * c + 13 * sn);
+    ctx.fillStyle = "#7FB8D6";
+    ctx.fillRect(-BOT_H, nivel, BOT_H * 2, BOT_H);
+    ctx.fillStyle = "#A9D2E6";
+    ctx.fillRect(-BOT_H, nivel - 2, BOT_H * 2, 4);
+    ctx.restore();
+
+    // etiqueta
+    rr(-BOT_W / 2, -2, BOT_W, 24, 2);
+    ctx.fillStyle = "#D7263D";
+    ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.font = "800 11px 'DM Sans', system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("AGUA", 0, 10.5);
+
+    // contorno
+    silueta();
+    ctx.lineWidth = 2.6;
+    ctx.strokeStyle = TINTA;
+    ctx.lineJoin = "round";
+    ctx.stroke();
+
+    // brillo
+    ctx.strokeStyle = "rgba(255,255,255,.85)";
+    ctx.lineWidth = 3;
+    ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(-BOT_W / 2 + 6, -BOT_H / 2 + 46); ctx.lineTo(-BOT_W / 2 + 6, -8); ctx.stroke();
+
+    // tapón
+    rr(-8, -BOT_H / 2, 16, 11, 3);
+    ctx.fillStyle = "#2B6CB0";
+    ctx.fill();
+    ctx.lineWidth = 2.2;
+    ctx.strokeStyle = TINTA;
+    ctx.stroke();
+
+    ctx.restore();
+}
+
+function pintarMesa() {
+    // tablero
+    ctx.fillStyle = "#D8B98E";
+    ctx.fillRect(0, MESA_Y, W, H - MESA_Y);
+    ctx.fillStyle = "#C3A073";
+    ctx.fillRect(0, MESA_Y + 14, W, H - MESA_Y - 14);
+    ctx.strokeStyle = TINTA;
+    ctx.lineWidth = 2.6;
+    ctx.beginPath(); ctx.moveTo(0, MESA_Y); ctx.lineTo(W, MESA_Y); ctx.stroke();
+    // vetas
+    ctx.strokeStyle = "rgba(120, 85, 45, .25)";
+    ctx.lineWidth = 2;
+    [[.12, 28, .3], [.5, 40, .25], [.78, 30, .18]].forEach(([fx, dy, l]) => {
+        ctx.beginPath(); ctx.moveTo(W * fx, MESA_Y + dy); ctx.lineTo(W * (fx + l), MESA_Y + dy); ctx.stroke();
+    });
+}
+
+function pintarBarra() {
+    const x = W - 34, y = 40, h = Math.min(220, MESA_Y - 80), w = 14;
+    rr(x, y, w, h, 7);
+    ctx.fillStyle = "#ECEAE6";
+    ctx.fill();
+
+    if (estado === "cargando") {
+        const fh = h * carga;
+        rr(x, y + h - fh, w, fh, 7);
+        ctx.fillStyle = TINTA;
+        ctx.fill();
+    }
+
+    // dónde quedó el último lanzamiento, para ir afinando
+    if (ultimaFuerza !== null) {
+        const yy = y + h - h * ultimaFuerza;
+        ctx.fillStyle = "#D7263D";
+        ctx.beginPath(); ctx.moveTo(x - 4, yy); ctx.lineTo(x - 11, yy - 5); ctx.lineTo(x - 11, yy + 5); ctx.closePath(); ctx.fill();
+    }
+
+    ctx.fillStyle = "#7C7B78";
+    ctx.font = "700 11px 'DM Sans', system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("FUERZA", x + w / 2, y + h + 18);
+}
+
+function pintarBocadillo(texto, cx, abajo) {
+    ctx.save();
+    ctx.font = "700 15px 'DM Sans', system-ui, sans-serif";
+    const w = ctx.measureText(texto).width + 24, h = 34;
+    const x = Math.min(Math.max(cx - w / 2, 8), W - w - 8), y = abajo - h - 8;
+    rr(x, y, w, h, 14);
+    ctx.fillStyle = TINTA; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(cx - 6, y + h - 1); ctx.lineTo(cx, y + h + 7); ctx.lineTo(cx + 6, y + h - 1); ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(texto, x + 12, y + h / 2 + 1);
+    ctx.restore();
+}
+
+function pintar(ahora) {
+    ctx.clearRect(0, 0, W, H);
+    pintarMesa();
+
+    // Dani mirando, a la izquierda
+    const dw = 64, dh = 92, dx = 14, dy = MESA_Y - dh + 4;
+    if (imgDani.complete) ctx.drawImage(imgDani, dx, dy, dw, dh);
+
+    // botella
+    const cx = W / 2 + 10 + desplX;
+    let cy = MESA_Y - BOT_H / 2 - alto;
+    if (estado === "aterriza" && anim.tipo === "cae") {
+        // al tumbarse, el centro baja hasta medio ancho de la botella
+        const p = Math.min(1, Math.abs(normalizar(angulo)) / (Math.PI / 2));
+        cy = MESA_Y - (BOT_H / 2) * (1 - p) - (BOT_W / 2) * p;
+    }
+    // sombra
+    ctx.fillStyle = "rgba(0,0,0,.12)";
+    const s = Math.max(.35, 1 - alto / 400);
+    ctx.beginPath(); ctx.ellipse(W / 2 + 10 + desplX, MESA_Y + 3, 24 * s, 4 * s, 0, 0, Math.PI * 2); ctx.fill();
+    pintarBotella(cx, cy, angulo);
+
+    pintarBarra();
+
+    if (bocadillo && ahora < bocadillo.hasta) pintarBocadillo(bocadillo.texto, dx + dw / 2, dy + 6);
+
+    if (estado === "quieta" && puntos === 0 && racha === 0 && ultimaFuerza === null) {
+        ctx.save();
+        ctx.textAlign = "center";
+        ctx.fillStyle = TINTA;
+        ctx.font = "650 21px 'Fraunces', Georgia, serif";
+        ctx.fillText("Mantén pulsado", W / 2, 70);
+        ctx.fillStyle = "#7C7B78";
+        ctx.font = "600 14px 'DM Sans', system-ui, sans-serif";
+        ctx.fillText("y suelta para lanzar", W / 2, 94);
+        ctx.restore();
+    }
+}
+
+function bucle(ahora) {
+    actualizar(ahora);
+    pintar(ahora);
+    requestAnimationFrame(bucle);
+}
+
+/* ---------- Controles ---------- */
+
+function empezarCarga() {
+    if (estado !== "quieta") return;
+    estado = "cargando";
+    cargaDesde = performance.now();
+    carga = 0;
+}
+
+function soltar() {
+    if (estado !== "cargando") return;
+    lanzar(fuerzaAhora(performance.now()));
+}
+
+mesa.addEventListener("pointerdown", e => { e.preventDefault(); empezarCarga(); });
+window.addEventListener("pointerup", soltar);
+window.addEventListener("pointercancel", soltar);
+mesa.addEventListener("contextmenu", e => e.preventDefault());
+
+window.addEventListener("keydown", e => {
+    if (e.code === "Space" && !e.repeat) { e.preventDefault(); empezarCarga(); }
+});
+window.addEventListener("keyup", e => {
+    if (e.code === "Space") soltar();
+});
+
+window.addEventListener("resize", medir);
+
+medir();
+decir("A ver si la clavas…", 2200);
+requestAnimationFrame(bucle);
+</script>
+
+</body>
+</html>
