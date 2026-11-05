@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#F3F2EF">
+<title>Punto de cruz</title>
+
+<link rel="icon" type="image/png" href="./favicon.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,600..700,100&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+    --bg: #F3F2EF;
+    --surface: #FFFFFF;
+    --ink: #161616;
+    --muted: #7C7B78;
+    --line: #E7E5E1;
+    --soft: #ECEAE6;
+    --rojo: #D7263D;
+}
+
+* { box-sizing: border-box }
+
+html, body { overscroll-behavior: none }
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
+
+main {
+    max-width: 520px;
+    margin: 0 auto;
+    padding: max(18px, env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom));
+}
+
+.top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.volver {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: 0 1px 2px rgba(0,0,0,.05), 0 6px 16px -10px rgba(0,0,0,.3);
+}
+
+h1 {
+    flex: 1;
+    margin: 0;
+    font-family: "Fraunces", Georgia, serif;
+    font-variation-settings: "SOFT" 100;
+    font-weight: 650;
+    font-size: 28px;
+    letter-spacing: -.02em;
+}
+
+.progreso {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.15;
+}
+
+.progreso strong {
+    display: block;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.progreso span {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+/* Bastidor */
+.bastidor {
+    position: relative;
+    padding: 12px;
+    border-radius: 26px;
+    background: #C9A57A;
+    box-shadow: inset 0 0 0 3px #A9845A, 0 10px 28px -14px rgba(0,0,0,.35);
+}
+
+canvas {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 14px;
+    touch-action: none;
+    cursor: crosshair;
+}
+
+.terminado {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: fit-content;
+    margin: 14px auto 0;
+    padding: 8px 8px 8px 16px;
+    border-radius: 999px;
+    background: var(--ink);
+    color: #fff;
+    font-weight: 700;
+    white-space: nowrap;
+    box-shadow: 0 12px 30px -10px rgba(0,0,0,.5);
+    animation: aparecer .35s cubic-bezier(.2,.9,.3,1.3);
+}
+
+.terminado[hidden] { display: none }
+
+.terminado button {
+    padding: 8px 14px;
+    border: none;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--ink);
+    font: inherit;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+@keyframes aparecer { from { opacity: 0; transform: translateY(10px) scale(.9) } }
+
+/* Hilos */
+.hilos {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin: 16px 0 6px;
+}
+
+.hilo {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    border: none;
+    border-radius: 50%;
+    background: var(--c);
+    color: var(--t);
+    font: inherit;
+    font-size: 18px;
+    font-weight: 800;
+    box-shadow: inset 0 0 0 2px rgba(0,0,0,.18), 0 4px 10px -6px rgba(0,0,0,.4);
+    cursor: pointer;
+    transition: transform .15s, box-shadow .15s;
+}
+
+.hilo[aria-pressed="true"] {
+    transform: translateY(-3px);
+    box-shadow: 0 0 0 3px var(--bg), 0 0 0 5.5px var(--ink), 0 8px 16px -8px rgba(0,0,0,.5);
+}
+
+.hilo small {
+    position: absolute;
+    right: -4px;
+    bottom: -4px;
+    min-width: 22px;
+    padding: 2px 5px;
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 11px;
+    font-weight: 700;
+    box-shadow: 0 0 0 1.5px var(--line);
+}
+
+.hilo.hecho { opacity: .45 }
+
+.ayuda {
+    margin: 8px 4px 20px;
+    color: var(--muted);
+    font-size: 14px;
+    text-align: center;
+}
+
+h2 {
+    margin: 0 4px 10px;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.galeria {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+}
+
+.mini {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 6px 9px;
+    border: 2px solid transparent;
+    border-radius: 18px;
+    background: var(--surface);
+    box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 6px 18px -12px rgba(0,0,0,.3);
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+}
+
+.mini canvas {
+    width: 100%;
+    border-radius: 8px;
+    cursor: pointer;
+    touch-action: auto;
+}
+
+.mini span {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.mini[aria-pressed="true"] { border-color: var(--ink) }
+
+.borrar {
+    display: block;
+    margin: 18px auto 0;
+    padding: 6px 10px;
+    border: none;
+    background: none;
+    color: var(--muted);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+<main>
+
+    <div class="top">
+        <a class="volver" href="./" aria-label="Volver a Cosas de Casa">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+        </a>
+        <h1>Punto de cruz</h1>
+        <div class="progreso">
+            <strong id="cuenta">0 / 0</strong>
+            <span id="nombre"></span>
+        </div>
+    </div>
+
+    <div class="bastidor">
+        <canvas id="tela" aria-label="Tela de punto de cruz: toca o arrastra para coser"></canvas>
+    </div>
+
+    <div id="terminado" class="terminado" hidden>
+        <span id="terminadoTexto">¡Qué bonito ha quedado!</span>
+        <button id="btnSiguiente">Siguiente</button>
+    </div>
+
+    <div id="hilos" class="hilos" role="group" aria-label="Colores de hilo"></div>
+    <p class="ayuda">Elige un hilo y toca (o arrastra) los cuadritos con su número.</p>
+
+    <h2>Dibujos</h2>
+    <div id="galeria" class="galeria"></div>
+
+    <button id="btnBorrar" class="borrar">Empezar este dibujo de nuevo</button>
+
+</main>
+
+<script>
+/* ==========================================================
+   DIBUJOS
+   Cada dibujo es una cuadrícula de 14 × 14:
+   - un número = un color de hilo (el de "colores", en orden)
+   - un punto  = tela sin coser
+   Para añadir uno nuevo, copia un bloque y cambia filas y colores.
+   ========================================================== */
+
+const DIBUJOS = [
+    {
+        id: "pato", nombre: "El patito",
+        colores: ["#F6C836", "#F08A24", "#1B1B1B", "#7FB8D6"],
+        filas: [
+            "..............",
+            "......1111....",
+            ".....111111...",
+            ".....113111...",
+            ".....11111122.",
+            "......11111...",
+            "..1...1111....",
+            "..11111111111.",
+            "..1111111111..",
+            "..111111111...",
+            "...1111111....",
+            "44444444444444",
+            ".4444.4444.444",
+            ".............."
+        ]
+    },
+    {
+        id: "corazon", nombre: "Corazón",
+        colores: ["#D7263D", "#F2A1AC"],
+        filas: [
+            "..............",
+            "...11....11...",
+            "..1111..1111..",
+            ".112111111111.",
+            ".121111111111.",
+            ".111111111111.",
+            ".111111111111.",
+            "..1111111111..",
+            "...11111111...",
+            "....111111....",
+            ".....1111.....",
+            "......11......",
+            "..............",
+            ".............."
+        ]
+    },
+    {
+        id: "gafas", nombre: "Las gafas",
+        colores: ["#D7263D", "#BBA8AA", "#FFFFFF"],
+        filas: [
+            "..............",
+            "..............",
+            "..............",
+            ".1111....1111.",
+            "13222111132221",
+            "123221..123221",
+            "122221..122221",
+            "122221..122221",
+            ".1111....1111.",
+            "..............",
+            "..............",
+            "..............",
+            "..............",
+            ".............."
+        ]
+    },
+    {
+        id: "casa", nombre: "La casa",
+        colores: ["#D7263D", "#EFE2C4", "#7A4B2A", "#7FB8D6", "#6BA368"],
+        filas: [
+            "......11......",
+            ".....1111.....",
+            "....111111....",
+            "...11111111...",
+            "..1111111111..",
+            ".111111111111.",
+            "..2222222222..",
+            "..2442222442..",
+            "..2442222442..",
+            "..2222332222..",
+            "..2222332222..",
+            "..2222332222..",
+            "55555555555555",
+            ".............."
+        ]
+    },
+    {
+        id: "taza", nombre: "Cafecito",
+        colores: ["#D7263D", "#6B4226", "#B8B5AF", "#FFFFFF"],
+        filas: [
+            "..............",
+            "....3..3......",
+            ".....3..3.....",
+            "....3..3......",
+            "..............",
+            ".1111111111...",
+            ".1222222221...",
+            ".111111111111.",
+            ".1444444441.1.",
+            ".1111111111.1.",
+            ".11111111111..",
+            "..11111111....",
+            ".333333333333.",
+            ".............."
+        ]
+    },
+    {
+        id: "flor", nombre: "La flor",
+        colores: ["#E46D8E", "#F6C836", "#6BA368"],
+        filas: [
+            "..............",
+            "......11......",
+            ".....1111.....",
+            "...11.11.11...",
+            "..1111221111..",
+            "..1111221111..",
+            "...11.11.11...",
+            ".....1111.....",
+            "......11......",
+            "......33......",
+            "..33..33......",
+            "...33333......",
+            "......33......",
+            "......33......"
+        ]
+    },
+    {
+        id: "botella", nombre: "La botella",
+        colores: ["#2B6CB0", "#CFE6F0", "#D7263D", "#7FB8D6"],
+        filas: [
+            "......11......",
+            "......11......",
+            "......22......",
+            ".....2222.....",
+            "....222222....",
+            "....222222....",
+            "....333333....",
+            "....333333....",
+            "....444444....",
+            "....444444....",
+            "....444444....",
+            "....444444....",
+            ".....4444.....",
+            ".............."
+        ]
+    },
+    {
+        id: "ovillo", nombre: "El ovillo",
+        colores: ["#E46D8E", "#B8466A", "#A0764B"],
+        filas: [
+            "..............",
+            "..............",
+            ".....1111..3..",
+            "...11211113...",
+            "..112111213...",
+            "..12111211....",
+            ".312111211....",
+            "3.11211121....",
+            "..11121112....",
+            "...1121111....",
+            "....11111.....",
+            "......2.......",
+            ".......22.....",
+            "..........222."
+        ]
+    }
+];
+
+const N = 14;
+
+/* ---------- Estado ---------- */
+
+let dibujo = DIBUJOS[0];
+let cosido = [];                // true/false por casilla
+let hiloSel = 1;
+
+try {
+    const g = localStorage.getItem("punto-dibujo");
+    dibujo = DIBUJOS.find(d => d.id === g) || DIBUJOS[0];
+} catch (e) { }
+
+function objetivo(d, f, c) {
+    const ch = d.filas[f][c];
+    return ch === "." ? 0 : parseInt(ch, 10);
+}
+
+function cargarCosido(d) {
+    let s = "";
+    try { s = localStorage.getItem("punto-" + d.id) || ""; } catch (e) { }
+    return Array.from({ length: N * N }, (_, i) => s[i] === "1");
+}
+
+function guardarCosido() {
+    try { localStorage.setItem("punto-" + dibujo.id, cosido.map(x => x ? "1" : "0").join("")); } catch (e) { }
+}
+
+function totales(d, cos) {
+    let total = 0, hechos = 0;
+    const porColor = d.colores.map(() => ({ total: 0, hechos: 0 }));
+    for (let f = 0; f < N; f++) for (let c = 0; c < N; c++) {
+        const o = objetivo(d, f, c);
+        if (!o) continue;
+        total++;
+        porColor[o - 1].total++;
+        if (cos[f * N + c]) { hechos++; porColor[o - 1].hechos++; }
+    }
+    return { total, hechos, porColor };
+}
+
+/* ---------- Pintar la tela ---------- */
+
+const tela = document.getElementById("tela");
+const ctx = tela.getContext("2d");
+let L = 360, CEL = 360 / N;
+
+function medir() {
+    const dpr = Math.min(3, window.devicePixelRatio || 1);
+    L = tela.clientWidth;
+    CEL = L / N;
+    tela.width = Math.round(L * dpr);
+    tela.height = Math.round(L * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function oscurecer(hex, f) {
+    const n = parseInt(hex.slice(1), 16);
+    const r = Math.round(((n >> 16) & 255) * f), g = Math.round(((n >> 8) & 255) * f), b = Math.round((n & 255) * f);
+    return `rgb(${r},${g},${b})`;
+}
+
+// Una crucecita: hilo de abajo y hilo de arriba, con un poco de relieve
+function cruz(c2d, x, y, s, color) {
+    const m = s * .2;
+    c2d.lineCap = "round";
+    c2d.lineWidth = s * .26;
+    c2d.strokeStyle = oscurecer(color, .78);
+    c2d.beginPath(); c2d.moveTo(x + m, y + m); c2d.lineTo(x + s - m, y + s - m); c2d.stroke();
+    c2d.strokeStyle = color;
+    c2d.beginPath(); c2d.moveTo(x + s - m, y + m); c2d.lineTo(x + m, y + s - m); c2d.stroke();
+    c2d.lineWidth = s * .07;
+    c2d.strokeStyle = "rgba(255,255,255,.35)";
+    c2d.beginPath(); c2d.moveTo(x + s - m - s * .05, y + m + s * .08); c2d.lineTo(x + m + s * .2, y + s - m - s * .32); c2d.stroke();
+}
+
+let fallo = null;               // { i, hasta } casilla tocada con el hilo equivocado
+
+function pintar() {
+    ctx.clearRect(0, 0, L, L);
+
+    // tela de Aida
+    ctx.fillStyle = "#FBF8F1";
+    ctx.fillRect(0, 0, L, L);
+
+    const hecho = totales(dibujo, cosido).hechos === totales(dibujo, cosido).total;
+
+    for (let f = 0; f < N; f++) for (let c = 0; c < N; c++) {
+        const i = f * N + c, o = objetivo(dibujo, f, c);
+        const x = c * CEL, y = f * CEL;
+
+        if (o && !cosido[i] && o === hiloSel) {
+            ctx.fillStyle = "#EFE6D4";
+            ctx.fillRect(x + 1, y + 1, CEL - 2, CEL - 2);
+        }
+
+        if (o && cosido[i]) {
+            cruz(ctx, x, y, CEL, dibujo.colores[o - 1]);
+        } else if (o && !hecho) {
+            ctx.fillStyle = o === hiloSel ? "#6E6457" : "#BDB4A5";
+            ctx.font = `700 ${Math.round(CEL * .42)}px 'DM Sans', system-ui, sans-serif`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(o, x + CEL / 2, y + CEL / 2 + 1);
+        }
+    }
+
+    // agujeritos de la tela
+    ctx.fillStyle = "#E2DCCF";
+    for (let f = 0; f <= N; f++) for (let c = 0; c <= N; c++) {
+        ctx.fillRect(c * CEL - .9, f * CEL - .9, 1.8, 1.8);
+    }
+
+    if (fallo && performance.now() < fallo.hasta) {
+        const f = Math.floor(fallo.i / N), c = fallo.i % N;
+        ctx.strokeStyle = "#D7263D";
+        ctx.lineWidth = 2.5;
+        ctx.strokeRect(c * CEL + 2, f * CEL + 2, CEL - 4, CEL - 4);
+        requestAnimationFrame(pintar);
+    }
+}
+
+/* ---------- Hilos ---------- */
+
+const hilos = document.getElementById("hilos");
+
+function claro(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    return (((n >> 16) & 255) * .299 + ((n >> 8) & 255) * .587 + (n & 255) * .114) > 160;
+}
+
+function pintarHilos() {
+    const t = totales(dibujo, cosido);
+    hilos.replaceChildren(...dibujo.colores.map((color, k) => {
+        const n = k + 1, quedan = t.porColor[k].total - t.porColor[k].hechos;
+        const b = document.createElement("button");
+        b.className = "hilo" + (quedan === 0 ? " hecho" : "");
+        b.style.setProperty("--c", color);
+        b.style.setProperty("--t", claro(color) ? "#161616" : "#fff");
+        b.setAttribute("aria-pressed", n === hiloSel);
+        b.setAttribute("aria-label", `Hilo ${n}, quedan ${quedan}`);
+        b.innerHTML = `${n}<small>${quedan || "✓"}</small>`;
+        b.addEventListener("click", () => { hiloSel = n; pintarTodo(); });
+        return b;
+    }));
+
+    document.getElementById("cuenta").textContent = `${t.hechos} / ${t.total}`;
+    document.getElementById("nombre").textContent = dibujo.nombre;
+    document.getElementById("terminado").hidden = t.hechos !== t.total;
+}
+
+/* ---------- Galería ---------- */
+
+const galeria = document.getElementById("galeria");
+
+function pintarGaleria() {
+    galeria.replaceChildren(...DIBUJOS.map(d => {
+        const cos = d === dibujo ? cosido : cargarCosido(d);
+        const t = totales(d, cos);
+        const b = document.createElement("button");
+        b.className = "mini";
+        b.setAttribute("aria-pressed", d === dibujo);
+
+        const cv = document.createElement("canvas");
+        const s = 4, lado = N * s;
+        cv.width = lado * 2; cv.height = lado * 2;
+        const c2 = cv.getContext("2d");
+        c2.scale(2, 2);
+        c2.fillStyle = "#FBF8F1";
+        c2.fillRect(0, 0, lado, lado);
+        for (let f = 0; f < N; f++) for (let c = 0; c < N; c++) {
+            const o = objetivo(d, f, c);
+            if (!o) continue;
+            if (cos[f * N + c]) { c2.fillStyle = d.colores[o - 1]; c2.fillRect(c * s, f * s, s, s); }
+            else { c2.fillStyle = "#ECE6DA"; c2.fillRect(c * s + 1, f * s + 1, s - 2, s - 2); }
+        }
+
+        const nombre = document.createElement("span");
+        nombre.textContent = t.hechos === t.total ? `✓ ${d.nombre}` : `${Math.round(t.hechos / t.total * 100)}%`;
+
+        b.append(cv, nombre);
+        b.addEventListener("click", () => elegirDibujo(d));
+        return b;
+    }));
+}
+
+function elegirDibujo(d) {
+    dibujo = d;
+    cosido = cargarCosido(d);
+    try { localStorage.setItem("punto-dibujo", d.id); } catch (e) { }
+    // primer hilo que aún tenga puntos
+    const t = totales(d, cosido);
+    const k = t.porColor.findIndex(p => p.hechos < p.total);
+    hiloSel = k >= 0 ? k + 1 : 1;
+    pintarTodo();
+}
+
+function pintarTodo() {
+    pintar();
+    pintarHilos();
+    pintarGaleria();
+}
+
+/* ---------- Coser ---------- */
+
+let cosiendo = false, ultimaCasilla = -1;
+
+function casillaEn(e) {
+    const r = tela.getBoundingClientRect();
+    const c = Math.floor((e.clientX - r.left) / (r.width / N));
+    const f = Math.floor((e.clientY - r.top) / (r.height / N));
+    if (c < 0 || c >= N || f < 0 || f >= N) return -1;
+    return f * N + c;
+}
+
+function coser(i, avisarFallo) {
+    if (i < 0 || i === ultimaCasilla) return;
+    ultimaCasilla = i;
+    const o = objetivo(dibujo, Math.floor(i / N), i % N);
+    if (!o || cosido[i]) return;
+
+    if (o !== hiloSel) {
+        if (avisarFallo) {
+            fallo = { i, hasta: performance.now() + 450 };
+            if (navigator.vibrate) navigator.vibrate(25);
+            pintar();
+        }
+        return;
+    }
+
+    cosido[i] = true;
+    guardarCosido();
+
+    // si se acaba este color, pasa al siguiente que quede
+    const t = totales(dibujo, cosido);
+    if (t.porColor[hiloSel - 1].hechos === t.porColor[hiloSel - 1].total) {
+        const k = t.porColor.findIndex(p => p.hechos < p.total);
+        if (k >= 0) hiloSel = k + 1;
+    }
+
+    pintar();
+    pintarHilos();
+    if (t.hechos === t.total) {
+        pintarGaleria();
+        if (navigator.vibrate) navigator.vibrate([30, 60, 30]);
+    }
+}
+
+tela.addEventListener("pointerdown", e => {
+    e.preventDefault();
+    tela.setPointerCapture(e.pointerId);
+    cosiendo = true;
+    ultimaCasilla = -1;
+    coser(casillaEn(e), true);
+});
+
+tela.addEventListener("pointermove", e => {
+    if (!cosiendo) return;
+    coser(casillaEn(e), false);
+});
+
+["pointerup", "pointercancel"].forEach(t => tela.addEventListener(t, () => {
+    cosiendo = false;
+    pintarGaleria();
+}));
+
+document.getElementById("btnSiguiente").addEventListener("click", () => {
+    const pendiente = DIBUJOS.find(d => { const t = totales(d, d === dibujo ? cosido : cargarCosido(d)); return t.hechos < t.total; });
+    const i = DIBUJOS.indexOf(dibujo);
+    elegirDibujo(pendiente || DIBUJOS[(i + 1) % DIBUJOS.length]);
+});
+
+document.getElementById("btnBorrar").addEventListener("click", () => {
+    if (!confirm(`¿Empezar «${dibujo.nombre}» de nuevo?`)) return;
+    cosido = Array(N * N).fill(false);
+    guardarCosido();
+    elegirDibujo(dibujo);
+});
+
+window.addEventListener("resize", () => { medir(); pintar(); });
+
+medir();
+elegirDibujo(dibujo);
+</script>
+
+</body>
+</html>

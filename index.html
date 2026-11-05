@@ -441,14 +441,15 @@ const munyecos = FAMILIA.map((p, i) => {
 
     el.addEventListener("click", () => {
         saludar(m);
-        // Secreto: 3 toques seguidos a Dani abren el bottle flip
-        if (m.nombre !== "Daniel") return;
+        // Secretos: 3 toques seguidos a Dani o a Macu abren su minijuego
+        const SECRETOS = { Daniel: "./botella.html", Macu: "./punto.html" };
+        if (!SECRETOS[m.nombre]) return;
         const ahora = performance.now();
         m.toques = ahora - (m.ultimoToque || 0) < 1200 ? (m.toques || 0) + 1 : 1;
         m.ultimoToque = ahora;
         if (m.toques >= 3) {
             m.toques = 0;
-            setTimeout(() => { location.href = "./botella.html"; }, 450);
+            setTimeout(() => { location.href = SECRETOS[m.nombre]; }, 450);
         }
     });
     return m;
