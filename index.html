@@ -314,7 +314,7 @@ main { padding-bottom: calc(170px + env(safe-area-inset-bottom)) }
 }
 @keyframes bocadillo { from { opacity: 0; transform: translate(-50%, 6px) scale(.8) } }
 
-/* ---------- Canción secreta (10 toques al logo) ---------- */
+/* ---------- Canción secreta (3 toques al logo) ---------- */
 
 #logo {
     cursor: pointer;
@@ -538,7 +538,7 @@ if (!quieto) {
 
 window.addEventListener("resize", repartir);
 
-/* ---------- Canción secreta: 10 toques seguidos al logo ---------- */
+/* ---------- Canción secreta: 3 toques seguidos al logo ---------- */
 
 const logo = document.getElementById("logo");
 let toques = 0, ultimoToque = 0, cancion = null, baile = null;
@@ -588,7 +588,7 @@ logo.addEventListener("click", () => {
     void logo.offsetWidth;
     logo.classList.add("toque");
 
-    if (toques >= 10) {
+    if (toques >= 3) {
         toques = 0;
         sonarCancion();
     }
