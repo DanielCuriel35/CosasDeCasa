@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#F3F2EF">
+<title>Corre por casa</title>
+
+<link rel="icon" type="image/png" href="./favicon.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,600..700,100&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+    --bg: #F3F2EF;
+    --surface: #FFFFFF;
+    --ink: #161616;
+    --muted: #7C7B78;
+    --line: #E7E5E1;
+    --soft: #ECEAE6;
+    --rojo: #D7263D;
+}
+
+* { box-sizing: border-box }
+
+html, body { overscroll-behavior: none }
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+main {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: max(18px, env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom));
+}
+
+.top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.volver {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: 0 1px 2px rgba(0,0,0,.05), 0 6px 16px -10px rgba(0,0,0,.3);
+}
+
+h1 {
+    flex: 1;
+    margin: 0;
+    font-family: "Fraunces", Georgia, serif;
+    font-variation-settings: "SOFT" 100;
+    font-weight: 650;
+    font-size: 28px;
+    letter-spacing: -.02em;
+}
+
+.marcador {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.15;
+}
+
+.marcador strong {
+    display: block;
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -.02em;
+}
+
+.marcador span {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.pista {
+    position: relative;
+    height: 270px;
+    overflow: hidden;
+    border-radius: 26px;
+    background: var(--surface);
+    box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 10px 28px -14px rgba(0,0,0,.25);
+    touch-action: manipulation;
+    cursor: pointer;
+}
+
+canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.ayuda {
+    margin: 12px 4px 22px;
+    color: var(--muted);
+    font-size: 14px;
+    text-align: center;
+}
+
+h2 {
+    margin: 0 4px 10px;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.elegir {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+}
+
+.pj {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 8px 2px 10px;
+    border: 2px solid transparent;
+    border-radius: 20px;
+    background: var(--surface);
+    box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 6px 18px -12px rgba(0,0,0,.3);
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    transition: border-color .15s, transform .15s, opacity .15s;
+}
+
+.pj svg {
+    width: 46px;
+    height: 66px;
+}
+
+.pj b {
+    font-size: 14px;
+}
+
+.pj small {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.pj[aria-pressed="true"] {
+    border-color: var(--ink);
+}
+
+.pj:active { transform: scale(.95) }
+
+.pj:disabled {
+    opacity: .45;
+    cursor: default;
+}
+
+@media (max-width: 360px) {
+    h1 { font-size: 24px }
+    .pj svg { width: 40px; height: 58px }
+}
+</style>
+</head>
+
+<body>
+<main>
+
+    <div class="top">
+        <a class="volver" href="./" aria-label="Volver a Cosas de Casa">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+        </a>
+        <h1>Corre por casa</h1>
+        <div class="marcador" aria-live="off">
+            <strong id="puntos">0</strong>
+            <span id="record">Récord 0</span>
+        </div>
+    </div>
+
+    <div id="pista" class="pista">
+        <canvas id="lienzo" aria-label="Juego: toca para saltar"></canvas>
+    </div>
+
+    <p class="ayuda">Toca la pantalla (o pulsa espacio) para saltar. Ojo con las chanclas: a las altas no hay que saltarlas.</p>
+
+    <h2>Elige personaje</h2>
+    <div id="elegir" class="elegir" role="group" aria-label="Personaje"></div>
+
+</main>
+
+<script src="personajes.js"></script>
+
+<script>
+/* ---------- Personaje elegido ---------- */
+
+const elegir = document.getElementById("elegir");
+const txtPuntos = document.getElementById("puntos");
+const txtRecord = document.getElementById("record");
+
+let elegido = FAMILIA[0];
+try {
+    const g = localStorage.getItem("juego-personaje");
+    elegido = FAMILIA.find(p => p.nombre === g) || FAMILIA[0];
+} catch (e) { }
+
+function leerRecord(nombre) {
+    try { return parseInt(localStorage.getItem("juego-record-" + nombre), 10) || 0; } catch (e) { return 0; }
+}
+
+function guardarRecord(nombre, n) {
+    try { localStorage.setItem("juego-record-" + nombre, String(n)); } catch (e) { }
+}
+
+// Tres dibujos por personaje: dos pasos de carrera y el salto
+function imagen(svg) {
+    const img = new Image();
+    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+    return img;
+}
+
+const sprites = {};
+FAMILIA.forEach(p => {
+    sprites[p.nombre] = {
+        paso1: imagen(dibujo(p, { piernaA: 24, piernaB: -24 })),
+        paso2: imagen(dibujo(p, { piernaA: -24, piernaB: 24 })),
+        salto: imagen(dibujo(p, { piernaA: 38, piernaB: -12 })),
+        quieto: imagen(dibujo(p, { piernaA: 0, piernaB: 0 }))
+    };
+});
+
+function pintarSelector() {
+    elegir.replaceChildren(...FAMILIA.map(p => {
+        const b = document.createElement("button");
+        b.className = "pj";
+        b.setAttribute("aria-pressed", p === elegido);
+        b.disabled = estado === "jugando";
+        b.innerHTML = `${dibujo(p, { piernaA: 0, piernaB: 0 })}<b>${p.nombre === "Daniel" ? "Dani" : p.nombre}</b><small>${leerRecord(p.nombre)}</small>`;
+        b.addEventListener("click", () => {
+            if (estado === "jugando") return;
+            elegido = p;
+            try { localStorage.setItem("juego-personaje", p.nombre); } catch (e) { }
+            reiniciar();
+            pintarSelector();
+        });
+        return b;
+    }));
+    txtRecord.textContent = `Récord ${leerRecord(elegido.nombre)}`;
+}
+
+/* ---------- Lienzo ---------- */
+
+const pista = document.getElementById("pista");
+const lienzo = document.getElementById("lienzo");
+const ctx = lienzo.getContext("2d");
+let W = 360, H = 270, SUELO = 236;
+
+function medir() {
+    const dpr = Math.min(3, window.devicePixelRatio || 1);
+    W = pista.clientWidth;
+    H = pista.clientHeight;
+    SUELO = H - 34;
+    lienzo.width = Math.round(W * dpr);
+    lienzo.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+/* ---------- Estado del juego ---------- */
+
+const PJ_X = 30, PJ_W = 56, PJ_H = 80;
+const GRAVEDAD = 2500, SALTO = -820;
+
+let estado = "listo";           // listo | jugando | fin
+let jugador, obstaculos, nubes, velocidad, puntos, distanciaSiguiente, suelo, tiempo, finDesde;
+
+function reiniciar() {
+    jugador = { y: 0, vy: 0, enSuelo: true };
+    obstaculos = [];
+    velocidad = 330;
+    puntos = 0;
+    tiempo = 0;
+    distanciaSiguiente = 420;
+    suelo = 0;
+    estado = "listo";
+    if (!nubes) nubes = Array.from({ length: 4 }, (_, i) => ({ x: 60 + i * 130 + Math.random() * 60, y: 26 + Math.random() * 60, s: .7 + Math.random() * .6 }));
+    txtPuntos.textContent = "0";
+}
+
+/* ---------- Obstáculos ---------- */
+
+const TIPOS = [
+    { tipo: "cesto", w: 34, h: 30 },
+    { tipo: "cubo", w: 28, h: 42 },
+    { tipo: "calcetin", w: 22, h: 26 },
+    { tipo: "pato", w: 26, h: 26 }
+];
+
+function nuevoObstaculo() {
+    // A partir de 250 puntos también vuelan chanclas
+    if (puntos > 250 && Math.random() < .28) {
+        const alta = Math.random() < .5;
+        obstaculos.push({ tipo: "chancla", x: W + 20, w: 34, h: 14, alto: alta ? 74 : 20, giro: 0 });
+        return;
+    }
+    const t = TIPOS[Math.floor(Math.random() * TIPOS.length)];
+    obstaculos.push({ ...t, x: W + 20, alto: 0 });
+
+    // A veces van de dos en dos
+    if (puntos > 150 && Math.random() < .2) {
+        const t2 = TIPOS[2 + Math.floor(Math.random() * 2)];
+        obstaculos.push({ ...t2, x: W + 20 + t.w + 4, alto: 0 });
+    }
+}
+
+/* ---------- Dibujo ---------- */
+
+const TINTA_J = "#1B1B1B";
+
+function rr(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+}
+
+function trazo(relleno, grosor = 2.5) {
+    ctx.fillStyle = relleno;
+    ctx.fill();
+    ctx.lineWidth = grosor;
+    ctx.strokeStyle = TINTA_J;
+    ctx.stroke();
+}
+
+function pintarObstaculo(o) {
+    const x = o.x, base = SUELO - o.alto, y = base - o.h;
+    ctx.save();
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+
+    if (o.tipo === "cesto") {
+        // ropa asomando
+        ctx.beginPath(); ctx.ellipse(x + 11, y + 4, 8, 6, -.4, 0, Math.PI * 2); trazo("#F4EFE7", 2);
+        ctx.beginPath(); ctx.ellipse(x + 24, y + 3, 7, 5, .5, 0, Math.PI * 2); trazo("#D7263D", 2);
+        ctx.beginPath();
+        ctx.moveTo(x, y + 6); ctx.lineTo(x + o.w, y + 6);
+        ctx.lineTo(x + o.w - 4, base); ctx.lineTo(x + 4, base); ctx.closePath();
+        trazo("#D9C59C");
+        ctx.strokeStyle = "#B49E70"; ctx.lineWidth = 1.6;
+        for (let i = 1; i < 4; i++) {
+            ctx.beginPath(); ctx.moveTo(x + 2 + i * .8, y + 6 + i * 6); ctx.lineTo(x + o.w - 2 - i * .8, y + 6 + i * 6); ctx.stroke();
+        }
+    }
+
+    if (o.tipo === "cubo") {
+        rr(x + 2, y + 6, o.w - 4, o.h - 6, 4); trazo("#6F6D69");
+        rr(x - 1, y + 1, o.w + 2, 7, 3); trazo("#4A4946");
+        rr(x + o.w / 2 - 5, y - 3, 10, 5, 2); trazo("#4A4946", 2);
+        ctx.strokeStyle = "#575551"; ctx.lineWidth = 1.6;
+        [9, 14, 19].forEach(dx => { ctx.beginPath(); ctx.moveTo(x + dx, y + 13); ctx.lineTo(x + dx, base - 5); ctx.stroke(); });
+    }
+
+    if (o.tipo === "calcetin") {
+        ctx.beginPath();
+        ctx.moveTo(x + 6, y); ctx.lineTo(x + 16, y);
+        ctx.lineTo(x + 16, y + 16);
+        ctx.quadraticCurveTo(x + 24, y + 18, x + 22, base - 2);
+        ctx.quadraticCurveTo(x + 14, base + 1, x + 4, base - 3);
+        ctx.quadraticCurveTo(x + 2, base - 9, x + 6, y + 16);
+        ctx.closePath();
+        trazo("#FFFFFF");
+        rr(x + 5, y, 12, 5, 2); trazo("#D7263D", 2);
+    }
+
+    if (o.tipo === "pato") {
+        ctx.beginPath(); ctx.ellipse(x + 12, base - 8, 12, 8, 0, 0, Math.PI * 2); trazo("#F6C836", 2.2);
+        ctx.beginPath(); ctx.arc(x + 16, y + 7, 7, 0, Math.PI * 2); trazo("#F6C836", 2.2);
+        ctx.beginPath(); ctx.moveTo(x + 22, y + 6); ctx.lineTo(x + 28, y + 8); ctx.lineTo(x + 22, y + 10); ctx.closePath(); trazo("#F08A24", 1.4);
+        ctx.beginPath(); ctx.arc(x + 18, y + 6, 1.3, 0, Math.PI * 2); ctx.fillStyle = TINTA_J; ctx.fill();
+    }
+
+    if (o.tipo === "chancla") {
+        ctx.translate(x + o.w / 2, y + o.h / 2);
+        ctx.rotate(o.giro);
+        rr(-o.w / 2, -o.h / 2, o.w, o.h, 7); trazo("#D7263D", 2.2);
+        ctx.strokeStyle = "#FFFFFF"; ctx.lineWidth = 2.6;
+        ctx.beginPath(); ctx.moveTo(-6, -4); ctx.lineTo(4, 0); ctx.lineTo(-6, 4); ctx.stroke();
+    }
+
+    ctx.restore();
+}
+
+function pintarNube(n) {
+    ctx.save();
+    ctx.translate(n.x, n.y);
+    ctx.scale(n.s, n.s);
+    ctx.fillStyle = "#EFEDE9";
+    ctx.beginPath();
+    ctx.arc(0, 10, 12, 0, Math.PI * 2);
+    ctx.arc(16, 4, 16, 0, Math.PI * 2);
+    ctx.arc(34, 10, 12, 0, Math.PI * 2);
+    ctx.fill();
+    rr(-12, 8, 58, 14, 7); ctx.fill();
+    ctx.restore();
+}
+
+function bocadillo(texto, cx, abajo) {
+    ctx.save();
+    ctx.font = "700 15px 'DM Sans', system-ui, sans-serif";
+    const w = ctx.measureText(texto).width + 24, h = 34;
+    const x = Math.min(Math.max(cx - w / 2, 8), W - w - 8), y = abajo - h - 8;
+    rr(x, y, w, h, 14);
+    ctx.fillStyle = TINTA_J; ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(cx - 6, y + h - 1); ctx.lineTo(cx, y + h + 7); ctx.lineTo(cx + 6, y + h - 1);
+    ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.textBaseline = "middle";
+    ctx.fillText(texto, x + 12, y + h / 2 + 1);
+    ctx.restore();
+}
+
+function textoCentro(t1, t2) {
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.fillStyle = TINTA_J;
+    ctx.font = "650 22px 'Fraunces', Georgia, serif";
+    ctx.fillText(t1, W / 2 + 30, 92);
+    if (t2) {
+        ctx.fillStyle = "#7C7B78";
+        ctx.font = "600 14px 'DM Sans', system-ui, sans-serif";
+        ctx.fillText(t2, W / 2 + 30, 118);
+    }
+    ctx.restore();
+}
+
+function pintar() {
+    ctx.clearRect(0, 0, W, H);
+
+    nubes.forEach(pintarNube);
+
+    // suelo a rayas que se mueve
+    ctx.save();
+    ctx.strokeStyle = "#D9D6D0";
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([16, 10]);
+    ctx.lineDashOffset = suelo;
+    ctx.beginPath(); ctx.moveTo(0, SUELO + 1); ctx.lineTo(W, SUELO + 1); ctx.stroke();
+    ctx.restore();
+
+    obstaculos.forEach(pintarObstaculo);
+
+    // jugador
+    const s = sprites[elegido.nombre];
+    let img = s.quieto;
+    if (estado === "jugando") img = !jugador.enSuelo ? s.salto : (Math.floor(tiempo * velocidad / 42) % 2 ? s.paso1 : s.paso2);
+    if (estado === "fin") img = s.salto;
+    const py = SUELO - PJ_H - jugador.y + 3;
+    if (img.complete) ctx.drawImage(img, PJ_X, py, PJ_W, PJ_H);
+
+    if (estado === "listo") textoCentro("Toca para empezar", `Corre con ${elegido.nombre === "Daniel" ? "Dani" : elegido.nombre}`);
+    if (estado === "fin") {
+        bocadillo(elegido.frase, PJ_X + PJ_W / 2, py);
+        textoCentro("¡Pumba!", "Toca para volver a jugar");
+    }
+}
+
+/* ---------- Bucle ---------- */
+
+function choca(o) {
+    // Cajas un poco más pequeñas que el dibujo para que sea justo
+    const jx1 = PJ_X + 15, jx2 = PJ_X + PJ_W - 13;
+    const jy2 = SUELO - jugador.y - 2, jy1 = jy2 - PJ_H + 18;
+    const ox1 = o.x + 3, ox2 = o.x + o.w - 3;
+    const oy2 = SUELO - o.alto - 2, oy1 = oy2 - o.h + 4;
+    return jx1 < ox2 && jx2 > ox1 && jy1 < oy2 && jy2 > oy1;
+}
+
+function actualizar(dt) {
+    nubes.forEach(n => {
+        n.x -= (estado === "jugando" ? velocidad * .08 : 8) * dt;
+        if (n.x < -70) { n.x = W + 20 + Math.random() * 80; n.y = 26 + Math.random() * 60; }
+    });
+
+    if (estado !== "jugando") return;
+
+    tiempo += dt;
+    velocidad = Math.min(780, 330 + tiempo * 9);
+    suelo += velocidad * dt;
+
+    // salto
+    jugador.vy += GRAVEDAD * dt;
+    jugador.y -= jugador.vy * dt;
+    if (jugador.y <= 0) { jugador.y = 0; jugador.vy = 0; jugador.enSuelo = true; }
+
+    // obstáculos
+    distanciaSiguiente -= velocidad * dt;
+    if (distanciaSiguiente <= 0) {
+        nuevoObstaculo();
+        distanciaSiguiente = velocidad * (.55 + Math.random() * .75) + 170;
+    }
+
+    obstaculos.forEach(o => {
+        o.x -= velocidad * dt * (o.tipo === "chancla" ? 1.18 : 1);
+        if (o.tipo === "chancla") o.giro -= dt * 9;
+    });
+    obstaculos = obstaculos.filter(o => o.x > -60);
+
+    puntos += velocidad * dt / 30;
+    txtPuntos.textContent = Math.floor(puntos);
+
+    if (obstaculos.some(choca)) perder();
+}
+
+function perder() {
+    estado = "fin";
+    finDesde = performance.now();
+    if (navigator.vibrate) navigator.vibrate(80);
+
+    const n = Math.floor(puntos);
+    if (n > leerRecord(elegido.nombre)) guardarRecord(elegido.nombre, n);
+    pintarSelector();
+}
+
+let antes = performance.now();
+function bucle(ahora) {
+    const dt = Math.min(.04, (ahora - antes) / 1000);
+    antes = ahora;
+    actualizar(dt);
+    pintar();
+    requestAnimationFrame(bucle);
+}
+
+/* ---------- Controles ---------- */
+
+function pulsar() {
+    if (estado === "listo") {
+        estado = "jugando";
+        pintarSelector();
+    }
+    if (estado === "fin") {
+        if (performance.now() - finDesde < 500) return;   // evita reiniciar sin querer
+        reiniciar();
+        estado = "jugando";
+        pintarSelector();
+    }
+    if (estado === "jugando" && jugador.enSuelo) {
+        jugador.vy = SALTO;
+        jugador.enSuelo = false;
+    }
+}
+
+pista.addEventListener("pointerdown", e => { e.preventDefault(); pulsar(); });
+
+window.addEventListener("keydown", e => {
+    if (e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyW") {
+        e.preventDefault();
+        if (!e.repeat) pulsar();
+    }
+});
+
+// Si se cambia de app a mitad de partida, se guarda el récord y se vuelve a empezar
+document.addEventListener("visibilitychange", () => {
+    if (document.hidden && estado === "jugando") {
+        const n = Math.floor(puntos);
+        if (n > leerRecord(elegido.nombre)) guardarRecord(elegido.nombre, n);
+        reiniciar();
+        pintarSelector();
+    }
+});
+
+window.addEventListener("resize", medir);
+
+medir();
+reiniciar();
+pintarSelector();
+requestAnimationFrame(bucle);
+</script>
+
+</body>
+</html>
