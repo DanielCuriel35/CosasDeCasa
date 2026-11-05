@@ -175,6 +175,125 @@ footer span {
     opacity: .7;
 }
 
+/* ---------- Muñecos que pasean ---------- */
+
+main { padding-bottom: calc(150px + env(safe-area-inset-bottom)) }
+
+.paseo {
+    position: fixed;
+    left: 50%;
+    bottom: 0;
+    width: 100%;
+    max-width: 480px;
+    height: calc(118px + env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    pointer-events: none;
+    z-index: 5;
+}
+
+.paseo::before {
+    content: "";
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    bottom: calc(26px + env(safe-area-inset-bottom));
+    height: 2px;
+    border-radius: 2px;
+    background: repeating-linear-gradient(90deg, #D9D6D0 0 14px, transparent 14px 22px);
+}
+
+.munyeco {
+    position: absolute;
+    left: 0;
+    bottom: calc(24px + env(safe-area-inset-bottom));
+    width: 58px;
+    height: 72px;
+    padding: 0;
+    border: none;
+    background: none;
+    pointer-events: auto;
+    cursor: pointer;
+    will-change: transform;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.munyeco svg {
+    display: block;
+    width: 58px;
+    height: 72px;
+    overflow: visible;
+    transition: transform .2s;
+}
+
+.munyeco.izq svg { transform: scaleX(-1) }
+
+.munyeco .cuerpo { animation: botar .45s ease-in-out infinite alternate paused }
+.munyeco .pierna-a,
+.munyeco .pierna-b { transform-box: fill-box; transform-origin: 50% 0 }
+.munyeco .pierna-a { animation: paso .45s ease-in-out infinite alternate paused }
+.munyeco .pierna-b { animation: paso .45s ease-in-out infinite alternate-reverse paused }
+
+.munyeco.anda .cuerpo,
+.munyeco.anda .pierna-a,
+.munyeco.anda .pierna-b { animation-play-state: running }
+
+.munyeco .ojos { transform-box: fill-box; transform-origin: 50% 50%; animation: parpadeo 4.2s infinite }
+.munyeco:nth-child(2) .ojos { animation-delay: 1.3s }
+.munyeco:nth-child(3) .ojos { animation-delay: 2.6s }
+.munyeco:nth-child(4) .ojos { animation-delay: .7s }
+
+.munyeco.salta svg { animation: saltar .55s cubic-bezier(.3, .7, .4, 1) }
+.munyeco.izq.salta svg { animation-name: saltar-izq }
+
+.bocadillo {
+    position: absolute;
+    left: 50%;
+    bottom: 78px;
+    padding: 7px 11px;
+    border-radius: 14px;
+    background: var(--ink);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    transform: translateX(-50%);
+    animation: bocadillo .25s cubic-bezier(.2, .9, .3, 1.3);
+    pointer-events: none;
+}
+
+.bocadillo::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -5px;
+    width: 10px;
+    height: 10px;
+    margin-left: -5px;
+    border-radius: 2px;
+    background: var(--ink);
+    transform: rotate(45deg);
+}
+
+@keyframes botar { to { transform: translateY(-2.5px) } }
+@keyframes paso { from { transform: rotate(-22deg) } to { transform: rotate(22deg) } }
+@keyframes parpadeo { 0%, 94%, 100% { transform: scaleY(1) } 97% { transform: scaleY(.1) } }
+@keyframes saltar {
+    0% { transform: translateY(0) scale(1, 1) }
+    20% { transform: translateY(0) scale(1.12, .86) }
+    55% { transform: translateY(-34px) scale(.94, 1.08) }
+    85% { transform: translateY(0) scale(1.08, .92) }
+    100% { transform: translateY(0) scale(1, 1) }
+}
+@keyframes saltar-izq {
+    0% { transform: scaleX(-1) translateY(0) }
+    20% { transform: scaleX(-1) translateY(0) scale(1.12, .86) }
+    55% { transform: scaleX(-1) translateY(-34px) scale(.94, 1.08) }
+    85% { transform: scaleX(-1) translateY(0) scale(1.08, .92) }
+    100% { transform: scaleX(-1) translateY(0) }
+}
+@keyframes bocadillo { from { opacity: 0; transform: translate(-50%, 6px) scale(.8) } }
+
 @keyframes entrar {
     from { opacity: 0; transform: translateY(10px) }
 }
@@ -218,9 +337,9 @@ footer span {
         </a>
     </nav>
 
-    <footer>Daniel<span></span>Diego<span></span>Macu<span></span>Marina</footer>
-
 </main>
+
+<div id="paseo" class="paseo" aria-hidden="true"></div>
 
 <script>
 // Direcciones de las dos apps en Vercel
@@ -238,6 +357,170 @@ const h = ahora.getHours();
 const saludo = h >= 6 && h < 14 ? "buenos días" : h >= 14 && h < 21 ? "buenas tardes" : "buenas noches";
 const fecha = new Intl.DateTimeFormat("es-ES", { weekday: "long", day: "numeric", month: "long" }).format(ahora);
 document.getElementById("saludo").textContent = `${saludo} · ${fecha}`;
+
+/* ---------- Muñecos que pasean ---------- */
+
+const ROJO = "#D7263D";
+const TINTA = "#161616";
+
+// Todos miran a la derecha; para ir a la izquierda se da la vuelta el dibujo
+const extras = {
+    // Daniel: las gafas rojas del logo
+    Daniel: `<g fill="none" stroke="${ROJO}" stroke-width="2.6">
+                <rect x="17" y="27" width="13" height="11" rx="4.5"/>
+                <rect x="33" y="27" width="13" height="11" rx="4.5"/>
+                <path d="M30 31.5q1.5-1.5 3 0"/>
+             </g>`,
+    // Diego: gorra con visera
+    Diego: `<path d="M15 21q1-11 16-11t15 10z" fill="${TINTA}"/>
+            <path d="M40 19.5q9-.5 12 2.5-6 1-13 .5z" fill="${TINTA}"/>
+            <circle cx="31" cy="10.5" r="2" fill="${ROJO}"/>`,
+    // Macu: moño
+    Macu: `<circle cx="30" cy="9" r="7" fill="#3A3936" stroke="${TINTA}" stroke-width="2.5"/>
+           <path d="M24 14.5q6 3 12 0" stroke="${ROJO}" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+    // Marina: coletas
+    Marina: `<circle cx="10" cy="22" r="6" fill="#4A4946" stroke="${TINTA}" stroke-width="2.5"/>
+             <circle cx="50" cy="22" r="6" fill="#4A4946" stroke="${TINTA}" stroke-width="2.5"/>
+             <circle cx="14.5" cy="18" r="2" fill="${ROJO}"/>
+             <circle cx="45.5" cy="18" r="2" fill="${ROJO}"/>`
+};
+
+const FAMILIA = [
+    { nombre: "Daniel", tono: "#2F2E2C" },
+    { nombre: "Diego", tono: "#6C6A66" },
+    { nombre: "Macu", tono: "#A3A09B" },
+    { nombre: "Marina", tono: "#D8D5CF" }
+];
+
+const FRASES = [
+    "¡Hola!", "¿Qué hay de cena?", "¡Se ha acabado la leche!", "¿Quién friega hoy?",
+    "¿Has mirado la agenda?", "¡Apúntalo en la lista!", "Tengo hambre…", "¡Me aburro!",
+    "¿Dónde están mis llaves?", "¡A la ducha!", "Cinco minutitos más…", "¿Bajas la basura?"
+];
+
+function dibujo({ nombre, tono }) {
+    const pupila = TINTA;
+    return `<svg viewBox="0 0 60 74" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="30" cy="71" rx="15" ry="3" fill="#000" opacity=".1"/>
+        <line class="pierna-a" x1="23" y1="56" x2="23" y2="68" stroke="${TINTA}" stroke-width="4.5" stroke-linecap="round"/>
+        <line class="pierna-b" x1="37" y1="56" x2="37" y2="68" stroke="${TINTA}" stroke-width="4.5" stroke-linecap="round"/>
+        <g class="cuerpo">
+            <path d="M30 13c13 0 20 8 20 22v8c0 10-7 15-20 15S10 53 10 43v-8c0-14 7-22 20-22z"
+                  fill="${tono}" stroke="${TINTA}" stroke-width="3"/>
+            <g class="ojos">
+                <circle cx="23.5" cy="32.5" r="5" fill="#fff" stroke="${TINTA}" stroke-width="1.5"/>
+                <circle cx="39.5" cy="32.5" r="5" fill="#fff" stroke="${TINTA}" stroke-width="1.5"/>
+                <circle cx="25.3" cy="33" r="2.4" fill="${pupila}"/>
+                <circle cx="41.3" cy="33" r="2.4" fill="${pupila}"/>
+            </g>
+            <circle cx="18" cy="41" r="3" fill="${ROJO}" opacity=".3"/>
+            <circle cx="44" cy="41" r="3" fill="${ROJO}" opacity=".3"/>
+            <path d="M28 42q3.5 3 7 0" fill="none" stroke="${TINTA}" stroke-width="2.4" stroke-linecap="round"/>
+            ${extras[nombre] || ""}
+        </g>
+    </svg>`;
+}
+
+const paseo = document.getElementById("paseo");
+const quieto = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const ANCHO = 58;
+
+const munyecos = FAMILIA.map((p, i) => {
+    const el = document.createElement("button");
+    el.className = "munyeco";
+    el.setAttribute("aria-label", p.nombre);
+    el.innerHTML = dibujo(p);
+    paseo.appendChild(el);
+
+    const m = {
+        ...p, el,
+        x: 0,
+        dir: Math.random() < .5 ? 1 : -1,
+        vel: 26 + Math.random() * 18,          // píxeles por segundo
+        hasta: 0,                               // cuándo cambia de andar/parar
+        anda: true,
+        ocupado: 0                              // tiempo parado tras saltar
+    };
+
+    el.addEventListener("click", () => saludar(m));
+    return m;
+});
+
+function colocar(m) {
+    m.el.style.transform = `translateX(${m.x}px)`;
+    m.el.classList.toggle("izq", m.dir < 0);
+    m.el.classList.toggle("anda", m.anda && !quieto);
+}
+
+function saludar(m) {
+    m.el.classList.remove("salta");
+    void m.el.offsetWidth;                      // reinicia la animación
+    m.el.classList.add("salta");
+
+    m.el.querySelector(".bocadillo")?.remove();
+    const b = document.createElement("span");
+    b.className = "bocadillo";
+    const frases = [`¡Soy ${m.nombre}!`, ...FRASES];
+    b.textContent = frases[Math.floor(Math.random() * frases.length)];
+    m.el.appendChild(b);
+
+    m.anda = false;
+    m.ocupado = 2.2;
+    colocar(m);
+
+    clearTimeout(m.tBocadillo);
+    m.tBocadillo = setTimeout(() => b.remove(), 2200);
+    setTimeout(() => m.el.classList.remove("salta"), 600);
+}
+
+function repartir() {
+    const libre = Math.max(0, paseo.clientWidth - 32 - ANCHO);
+    munyecos.forEach((m, i) => {
+        m.x = 16 + (libre / (munyecos.length - 1 || 1)) * i;
+        colocar(m);
+    });
+}
+
+repartir();
+
+if (!quieto) {
+    let antes = performance.now();
+
+    function paso(ahora) {
+        const dt = Math.min(.05, (ahora - antes) / 1000);
+        antes = ahora;
+        const min = 16, max = paseo.clientWidth - 16 - ANCHO;
+
+        munyecos.forEach(m => {
+            if (m.ocupado > 0) {
+                m.ocupado -= dt;
+                if (m.ocupado <= 0) { m.anda = true; m.hasta = ahora + 2000 + Math.random() * 4000; }
+                return;
+            }
+
+            // De vez en cuando se paran un rato, o se dan la vuelta
+            if (ahora > m.hasta) {
+                m.anda = !m.anda || Math.random() < .3;
+                if (m.anda && Math.random() < .4) m.dir *= -1;
+                m.hasta = ahora + (m.anda ? 2500 + Math.random() * 5000 : 900 + Math.random() * 2200);
+            }
+
+            if (m.anda) {
+                m.x += m.dir * m.vel * dt;
+                if (m.x < min) { m.x = min; m.dir = 1; }
+                if (m.x > max) { m.x = max; m.dir = -1; }
+            }
+
+            colocar(m);
+        });
+
+        requestAnimationFrame(paso);
+    }
+
+    requestAnimationFrame(paso);
+}
+
+window.addEventListener("resize", repartir);
 </script>
 
 </body>
