@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#1C1A22">
+<title>Baila con Marina</title>
+
+<link rel="icon" type="image/png" href="./favicon.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,600..700,100&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap" rel="stylesheet">
+
+<style>
+:root {
+    --bg: #1C1A22;
+    --panel: #26232E;
+    --texto: #F5F2EC;
+    --muted: #A29DAD;
+}
+
+* { box-sizing: border-box }
+
+html, body { overscroll-behavior: none }
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--texto);
+    font-family: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
+
+main {
+    max-width: 520px;
+    margin: 0 auto;
+    padding: max(16px, env(safe-area-inset-top)) 14px calc(18px + env(safe-area-inset-bottom));
+}
+
+.top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.volver {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--panel);
+    color: var(--texto);
+}
+
+h1 {
+    flex: 1;
+    margin: 0;
+    font-family: "Fraunces", Georgia, serif;
+    font-variation-settings: "SOFT" 100;
+    font-weight: 650;
+    font-size: 26px;
+    letter-spacing: -.02em;
+}
+
+.escenario {
+    position: relative;
+    height: calc(100vh - 100px);
+    height: calc(100dvh - 100px);
+    min-height: 460px;
+    max-height: 760px;
+    overflow: hidden;
+    border-radius: 26px;
+    background: #15131A;
+    touch-action: none;
+}
+
+canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* Menú y resultados encima del escenario */
+.capa {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 20px;
+    background: rgba(21, 19, 26, .86);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    text-align: center;
+}
+
+.capa[hidden] { display: none }
+
+.capa h2 {
+    margin: 0;
+    font-family: "Fraunces", Georgia, serif;
+    font-variation-settings: "SOFT" 100;
+    font-weight: 650;
+    font-size: 30px;
+    letter-spacing: -.02em;
+}
+
+.capa p {
+    margin: 0 0 6px;
+    color: var(--muted);
+    font-size: 15px;
+}
+
+.cancion {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    max-width: 330px;
+    padding: 14px 16px;
+    border: 2px solid transparent;
+    border-radius: 20px;
+    background: var(--panel);
+    color: var(--texto);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: transform .15s, border-color .15s;
+}
+
+.cancion:active { transform: scale(.97) }
+.cancion:hover { border-color: #4A4555 }
+
+.cancion .nivel {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    border-radius: 14px;
+    background: var(--c);
+    color: #15131A;
+    font-weight: 800;
+    font-size: 18px;
+}
+
+.cancion b { display: block; font-size: 17px }
+.cancion small { color: var(--muted); font-size: 13px; font-weight: 600 }
+
+.nota {
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 84px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.datos {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    gap: 6px 18px;
+    margin: 4px 0 8px;
+    font-variant-numeric: tabular-nums;
+}
+
+.datos span { color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .04em }
+.datos b { font-size: 20px }
+
+.boton {
+    padding: 13px 22px;
+    border: none;
+    border-radius: 999px;
+    background: var(--texto);
+    color: #15131A;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.boton.sec {
+    background: var(--panel);
+    color: var(--texto);
+}
+
+.ayuda {
+    max-width: 300px;
+    font-size: 13px !important;
+}
+</style>
+</head>
+
+<body>
+<main>
+
+    <div class="top">
+        <a class="volver" href="./" aria-label="Volver a Cosas de Casa">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+        </a>
+        <h1>Baila con Marina</h1>
+    </div>
+
+    <div id="escenario" class="escenario">
+        <canvas id="lienzo" aria-label="Juego de ritmo: toca cada carril cuando la flecha llegue abajo"></canvas>
+
+        <div id="menu" class="capa">
+            <h2>¿Qué bailamos?</h2>
+            <p>Toca el carril cuando la flecha llegue al círculo.</p>
+            <div id="canciones" style="display:flex;flex-direction:column;gap:10px;width:100%;align-items:center"></div>
+            <p class="ayuda">En ordenador: flechas del teclado o D F J K. Sube el volumen.</p>
+        </div>
+
+        <div id="final" class="capa" hidden>
+            <p id="finalCancion"></p>
+            <div id="finalNota" class="nota">A</div>
+            <div class="datos">
+                <span>PUNTOS</span><span>ACIERTOS</span><span>COMBO</span>
+                <b id="finalPuntos">0</b><b id="finalAciertos">0%</b><b id="finalCombo">0</b>
+            </div>
+            <p id="finalRecord"></p>
+            <button id="btnOtra" class="boton">Otra vez</button>
+            <button id="btnMenu" class="boton sec">Elegir canción</button>
+        </div>
+    </div>
+
+</main>
+
+<script src="personajes.js"></script>
+
+<script>
+/* ==========================================================
+   CANCIONES
+   La música y las flechas se generan solas a partir de estos
+   datos (siempre salen igual para cada canción).
+   ========================================================== */
+
+const CANCIONES = [
+    { id: "arlo", nombre: "Paseo con Arlo", nivel: "Fácil", color: "#6BA368", bpm: 92, compases: 16, corcheas: 0, dobles: 0, huecos: .25, caida: 1.7, semilla: 7 },
+    { id: "domingo", nombre: "Domingo en casa", nivel: "Normal", color: "#7FB8D6", bpm: 108, compases: 20, corcheas: .28, dobles: .06, huecos: .12, caida: 1.4, semilla: 21 },
+    { id: "espera", nombre: "¡ESPERAAAA!", nivel: "Difícil", color: "#E46D8E", bpm: 126, compases: 24, corcheas: .55, dobles: .14, huecos: .05, caida: 1.15, semilla: 99 }
+];
+
+// Acordes por compás: Do, La menor, Fa, Sol
+const ACORDES = [
+    { bajo: 65.41, notas: [261.63, 329.63, 392.00, 523.25] },
+    { bajo: 55.00, notas: [220.00, 261.63, 329.63, 440.00] },
+    { bajo: 87.31, notas: [174.61, 220.00, 261.63, 349.23] },
+    { bajo: 98.00, notas: [196.00, 246.94, 293.66, 392.00] }
+];
+
+const CARRILES = [
+    { tecla: ["ArrowLeft", "KeyD"], color: "#E46D8E", giro: -Math.PI / 2 },
+    { tecla: ["ArrowDown", "KeyF"], color: "#7FB8D6", giro: Math.PI },
+    { tecla: ["ArrowUp", "KeyJ"], color: "#6BA368", giro: 0 },
+    { tecla: ["ArrowRight", "KeyK"], color: "#F6C836", giro: Math.PI / 2 }
+];
+
+function azar(semilla) {
+    // Generador de números "aleatorios" que siempre da la misma serie
+    let a = semilla >>> 0;
+    return () => {
+        a |= 0; a = a + 0x6D2B79F5 | 0;
+        let t = Math.imul(a ^ a >>> 15, 1 | a);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+}
+
+const ENTRADA = 2;              // compases de música antes de la primera flecha
+
+function crearFlechas(c) {
+    const r = azar(c.semilla);
+    const negra = 60 / c.bpm;
+    const flechas = [];
+    let ultimo = -1;
+
+    const carrilNuevo = () => {
+        let k;
+        do { k = Math.floor(r() * 4); } while (k === ultimo && r() < .7);
+        ultimo = k;
+        return k;
+    };
+
+    for (let comp = ENTRADA; comp < ENTRADA + c.compases; comp++) {
+        for (let tiempo = 0; tiempo < 4; tiempo++) {
+            const t = (comp * 4 + tiempo) * negra;
+            // descanso al final de cada frase de 4 compases
+            if ((comp - ENTRADA) % 4 === 3 && tiempo === 3) continue;
+            if (r() < c.huecos) continue;
+
+            const k = carrilNuevo();
+            flechas.push({ t, carril: k, comp });
+            if (r() < c.dobles) {
+                let k2 = (k + 1 + Math.floor(r() * 3)) % 4;
+                flechas.push({ t, carril: k2, comp });
+            }
+            if (r() < c.corcheas) flechas.push({ t: t + negra / 2, carril: carrilNuevo(), comp });
+        }
+    }
+    return flechas.sort((a, b) => a.t - b.t);
+}
+
+/* ---------- Sonido (todo generado en el navegador) ---------- */
+
+let audio = null, ruido = null;
+
+function prepararAudio() {
+    if (audio) { audio.resume(); return; }
+    audio = new (window.AudioContext || window.webkitAudioContext)();
+    const n = audio.sampleRate;
+    ruido = audio.createBuffer(1, n, n);
+    const d = ruido.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+}
+
+function envolvente(g, t, pico, caida) {
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(pico, t + .005);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + caida);
+}
+
+function bombo(t) {
+    const o = audio.createOscillator(), g = audio.createGain();
+    o.frequency.setValueAtTime(140, t);
+    o.frequency.exponentialRampToValueAtTime(42, t + .13);
+    envolvente(g, t, .9, .22);
+    o.connect(g).connect(audio.destination);
+    o.start(t); o.stop(t + .25);
+}
+
+function golpeRuido(t, filtroHz, pico, caida) {
+    const s = audio.createBufferSource(), f = audio.createBiquadFilter(), g = audio.createGain();
+    s.buffer = ruido;
+    f.type = "highpass"; f.frequency.value = filtroHz;
+    envolvente(g, t, pico, caida);
+    s.connect(f).connect(g).connect(audio.destination);
+    s.start(t); s.stop(t + caida + .02);
+}
+
+function caja(t) {
+    golpeRuido(t, 1400, .35, .14);
+    const o = audio.createOscillator(), g = audio.createGain();
+    o.frequency.value = 190;
+    envolvente(g, t, .18, .08);
+    o.connect(g).connect(audio.destination);
+    o.start(t); o.stop(t + .1);
+}
+
+function platillo(t) { golpeRuido(t, 7500, .09, .045); }
+
+function bajo(t, hz, dur) {
+    const o = audio.createOscillator(), g = audio.createGain(), f = audio.createBiquadFilter();
+    o.type = "sawtooth"; o.frequency.value = hz;
+    f.type = "lowpass"; f.frequency.value = 520;
+    envolvente(g, t, .22, dur);
+    o.connect(f).connect(g).connect(audio.destination);
+    o.start(t); o.stop(t + dur + .02);
+}
+
+function guitarra(t, hz) {
+    // dos osciladores un poco desafinados: suena a cuerda punteada
+    [0, 6].forEach(cents => {
+        const o = audio.createOscillator(), g = audio.createGain(), f = audio.createBiquadFilter();
+        o.type = "square"; o.frequency.value = hz; o.detune.value = cents;
+        f.type = "lowpass"; f.frequency.setValueAtTime(3200, t); f.frequency.exponentialRampToValueAtTime(500, t + .3);
+        envolvente(g, t, .07, .35);
+        o.connect(f).connect(g).connect(audio.destination);
+        o.start(t); o.stop(t + .4);
+    });
+}
+
+function fallo(t) {
+    const o = audio.createOscillator(), g = audio.createGain();
+    o.type = "triangle";
+    o.frequency.setValueAtTime(140, t);
+    o.frequency.exponentialRampToValueAtTime(70, t + .15);
+    envolvente(g, t, .08, .16);
+    o.connect(g).connect(audio.destination);
+    o.start(t); o.stop(t + .2);
+}
+
+/* ---------- Partida ---------- */
+
+let cancion = null, flechas = [], inicio = 0, fin = 0;
+let tiempoProgramado = 0, programador = null;
+let jugando = false;
+let puntos = 0, combo = 0, comboMax = 0, aciertos = 0, perfectos = 0;
+let avisos = [];                // textos "¡Perfecto!" que suben
+let pulsado = [0, 0, 0, 0];     // momento del último toque en cada carril
+let bocadillo = null;
+
+const V_PERFECTO = .065, V_BIEN = .13;
+
+function ahora() { return audio.currentTime - inicio; }
+
+function programarMusica() {
+    // Programa la música un poco por delante del momento actual
+    const negra = 60 / cancion.bpm;
+    const totalTiempos = (ENTRADA + cancion.compases + 1) * 4;
+    while (tiempoProgramado < totalTiempos && inicio + tiempoProgramado * negra < audio.currentTime + .15) {
+        const i = tiempoProgramado, t = inicio + i * negra;
+        const tiempo = i % 4, acorde = ACORDES[Math.floor(i / 4) % 4];
+        if (tiempo === 0 || tiempo === 2) bombo(t);
+        if (tiempo === 1 || tiempo === 3) caja(t);
+        platillo(t); platillo(t + negra / 2);
+        bajo(t, tiempo === 2 ? acorde.bajo * 1.5 : acorde.bajo, negra * .8);
+        tiempoProgramado++;
+    }
+}
+
+function empezar(c) {
+    prepararAudio();
+    cancion = c;
+    flechas = crearFlechas(c);
+    puntos = combo = comboMax = aciertos = perfectos = 0;
+    avisos = [];
+    bocadillo = { texto: "¡Vamos!", hasta: 1.5 };
+    inicio = audio.currentTime + .25;
+    fin = flechas[flechas.length - 1].t + 1.6;
+    tiempoProgramado = 0;
+    clearInterval(programador);
+    programador = setInterval(programarMusica, 25);
+    programarMusica();
+    jugando = true;
+    document.getElementById("menu").hidden = true;
+    document.getElementById("final").hidden = true;
+}
+
+function terminar() {
+    jugando = false;
+    clearInterval(programador);
+
+    const total = flechas.length;
+    const pct = total ? Math.round(aciertos / total * 100) : 0;
+    const nota = pct === 100 && perfectos === total ? "S+" : pct >= 95 ? "S" : pct >= 85 ? "A" : pct >= 70 ? "B" : pct >= 50 ? "C" : "D";
+
+    let record = 0;
+    try { record = parseInt(localStorage.getItem("ritmo-" + cancion.id), 10) || 0; } catch (e) { }
+    const nuevo = puntos > record;
+    if (nuevo) try { localStorage.setItem("ritmo-" + cancion.id, String(puntos)); } catch (e) { }
+
+    document.getElementById("finalCancion").textContent = `${cancion.nombre} · ${cancion.nivel}`;
+    document.getElementById("finalNota").textContent = nota;
+    document.getElementById("finalPuntos").textContent = puntos;
+    document.getElementById("finalAciertos").textContent = pct + "%";
+    document.getElementById("finalCombo").textContent = comboMax;
+    document.getElementById("finalRecord").textContent = nuevo ? "¡Nuevo récord!" : `Récord: ${record}`;
+    document.getElementById("final").hidden = false;
+}
+
+function cortar() {
+    // si se sale de la app a mitad, se para todo
+    if (!jugando) return;
+    jugando = false;
+    clearInterval(programador);
+    if (audio) audio.suspend();
+    pintarMenu();
+    document.getElementById("menu").hidden = false;
+}
+
+/* ---------- Tocar ---------- */
+
+function tocar(k) {
+    if (!jugando) return;
+    const t = ahora();
+    pulsado[k] = t;
+
+    // la flecha más cercana de ese carril que no se haya tocado
+    let mejor = null, dmin = Infinity;
+    for (const f of flechas) {
+        if (f.carril !== k || f.hecha || f.fallada) continue;
+        const d = Math.abs(f.t - t);
+        if (d < dmin) { dmin = d; mejor = f; }
+        if (f.t > t + V_BIEN) break;
+    }
+
+    if (mejor && dmin <= V_BIEN) {
+        mejor.hecha = true;
+        const perfecto = dmin <= V_PERFECTO;
+        combo++;
+        comboMax = Math.max(comboMax, combo);
+        aciertos++;
+        if (perfecto) perfectos++;
+        const multi = Math.min(4, 1 + Math.floor(combo / 10));
+        puntos += (perfecto ? 100 : 50) * multi;
+        avisos.push({ texto: perfecto ? "¡Perfecto!" : "¡Bien!", carril: k, t, color: CARRILES[k].color });
+        guitarra(audio.currentTime, ACORDES[mejor.comp % 4].notas[k]);
+        if (combo === 10 || combo === 25 || combo === 50) bocadillo = { texto: combo === 50 ? "¡¡IMPARABLE!!" : `¡Combo ${combo}!`, hasta: t + 1.4 };
+    }
+}
+
+function perderFlecha(f) {
+    f.fallada = true;
+    if (combo >= 5) bocadillo = { texto: "¡ESPERAAAA!", hasta: ahora() + 1.3 };
+    combo = 0;
+    avisos.push({ texto: "Fallo", carril: f.carril, t: ahora(), color: "#8C8696" });
+    fallo(audio.currentTime);
+}
+
+/* ---------- Dibujo ---------- */
+
+const escenario = document.getElementById("escenario");
+const lienzo = document.getElementById("lienzo");
+const ctx = lienzo.getContext("2d");
+let W = 360, H = 600, OBJ_Y = 500, ARRIBA = 92, ANCHO_C = 90;
+
+function medir() {
+    const dpr = Math.min(3, window.devicePixelRatio || 1);
+    W = escenario.clientWidth;
+    H = escenario.clientHeight;
+    lienzo.width = Math.round(W * dpr);
+    lienzo.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ANCHO_C = W / 4;
+    OBJ_Y = H - 86;
+}
+
+function flecha(cx, cy, tam, giro, relleno, borde) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(giro);
+    const s = tam / 2;
+    ctx.beginPath();
+    ctx.moveTo(0, -s);
+    ctx.lineTo(s, 0);
+    ctx.lineTo(s * .42, 0);
+    ctx.lineTo(s * .42, s);
+    ctx.lineTo(-s * .42, s);
+    ctx.lineTo(-s * .42, 0);
+    ctx.lineTo(-s, 0);
+    ctx.closePath();
+    ctx.lineJoin = "round";
+    if (relleno) { ctx.fillStyle = relleno; ctx.fill(); }
+    if (borde) { ctx.lineWidth = 3; ctx.strokeStyle = borde; ctx.stroke(); }
+    ctx.restore();
+}
+
+function rr(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+}
+
+const imgMarina = (() => {
+    const p = FAMILIA.find(x => x.nombre === "Marina");
+    const mk = (a, b) => { const i = new Image(); i.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(dibujo(p, { piernaA: a, piernaB: b })); return i; };
+    return [mk(0, 0), mk(22, -8), mk(-8, 22)];
+})();
+
+function pintar() {
+    ctx.clearRect(0, 0, W, H);
+    const t = jugando && audio ? ahora() : -1;
+    const negra = cancion ? 60 / cancion.bpm : .5;
+    const golpe = t >= 0 ? 1 - ((t / negra) % 1) : 0;   // 1 justo en el tiempo, baja hasta 0
+
+    // carriles
+    for (let k = 0; k < 4; k++) {
+        const x = k * ANCHO_C;
+        ctx.fillStyle = k % 2 ? "#18161D" : "#1D1B23";
+        ctx.fillRect(x, ARRIBA - 20, ANCHO_C, H);
+        const brillo = t >= 0 ? Math.max(0, 1 - (t - pulsado[k]) / .18) : 0;
+        if (brillo > 0) {
+            const g = ctx.createLinearGradient(0, OBJ_Y, 0, ARRIBA);
+            g.addColorStop(0, CARRILES[k].color + "55");
+            g.addColorStop(1, CARRILES[k].color + "00");
+            ctx.globalAlpha = brillo;
+            ctx.fillStyle = g;
+            ctx.fillRect(x, ARRIBA, ANCHO_C, OBJ_Y - ARRIBA);
+            ctx.globalAlpha = 1;
+        }
+    }
+
+    // línea de llegada y huecos de las flechas
+    ctx.fillStyle = "rgba(255,255,255,.06)";
+    ctx.fillRect(0, OBJ_Y - 1, W, 2);
+    const tamF = Math.min(64, ANCHO_C * .72);
+    for (let k = 0; k < 4; k++) {
+        const cx = k * ANCHO_C + ANCHO_C / 2;
+        const apretado = t >= 0 && t - pulsado[k] < .1;
+        ctx.beginPath();
+        ctx.arc(cx, OBJ_Y, tamF * .62 + golpe * 3, 0, Math.PI * 2);
+        ctx.fillStyle = apretado ? CARRILES[k].color + "44" : "rgba(255,255,255,.04)";
+        ctx.fill();
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = CARRILES[k].color + (apretado ? "ff" : "88");
+        ctx.stroke();
+        flecha(cx, OBJ_Y, tamF * .78, CARRILES[k].giro, null, CARRILES[k].color + (apretado ? "ff" : "77"));
+    }
+
+    // flechas que caen
+    if (t >= 0) {
+        const recorrido = OBJ_Y - ARRIBA;
+        for (const f of flechas) {
+            if (f.hecha) continue;
+            const falta = f.t - t;
+            if (falta > cancion.caida) break;
+            if (!f.fallada && falta < -V_BIEN) perderFlecha(f);
+            if (falta < -.35) continue;
+            const y = OBJ_Y - (falta / cancion.caida) * recorrido;
+            const cx = f.carril * ANCHO_C + ANCHO_C / 2;
+            ctx.globalAlpha = f.fallada ? .25 : 1;
+            flecha(cx, y, tamF, CARRILES[f.carril].giro, CARRILES[f.carril].color, "#15131A");
+            ctx.globalAlpha = 1;
+        }
+
+        // avisos que suben y se desvanecen
+        avisos = avisos.filter(a => t - a.t < .6);
+        for (const a of avisos) {
+            const p = (t - a.t) / .6;
+            ctx.globalAlpha = 1 - p;
+            ctx.fillStyle = a.color;
+            ctx.font = "800 15px 'DM Sans', system-ui, sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText(a.texto, a.carril * ANCHO_C + ANCHO_C / 2, OBJ_Y - 52 - p * 26);
+            ctx.globalAlpha = 1;
+        }
+    }
+
+    // marcador arriba
+    ctx.fillStyle = "#15131A";
+    ctx.fillRect(0, 0, W, ARRIBA - 20);
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#F5F2EC";
+    ctx.font = "800 26px 'DM Sans', system-ui, sans-serif";
+    ctx.fillText(puntos, 16, 40);
+    ctx.fillStyle = "#A29DAD";
+    ctx.font = "700 13px 'DM Sans', system-ui, sans-serif";
+    const multi = Math.min(4, 1 + Math.floor(combo / 10));
+    ctx.fillText(combo > 1 ? `Combo ${combo}${multi > 1 ? `  ×${multi}` : ""}` : (cancion ? cancion.nombre : ""), 16, 60);
+
+    // barra de progreso
+    if (t >= 0 && fin) {
+        rr(16, ARRIBA - 14, W - 32, 4, 2);
+        ctx.fillStyle = "#2E2A36"; ctx.fill();
+        rr(16, ARRIBA - 14, (W - 32) * Math.min(1, Math.max(0, t / fin)), 4, 2);
+        ctx.fillStyle = cancion.color; ctx.fill();
+    }
+
+    // Marina bailando arriba a la derecha
+    const paso = t >= 0 ? (Math.floor(t / negra) % 2 ? 1 : 2) : 0;
+    const img = imgMarina[paso];
+    const mw = 46, mh = 66, mx = W - mw - 14, my = 6 - golpe * 4;
+    if (img.complete) ctx.drawImage(img, mx, my, mw, mh);
+
+    if (bocadillo && t >= 0 && t < bocadillo.hasta) {
+        ctx.font = "800 14px 'DM Sans', system-ui, sans-serif";
+        const w = ctx.measureText(bocadillo.texto).width + 20;
+        const bx = mx - w - 8, by = 22;
+        rr(bx, by, w, 30, 12);
+        ctx.fillStyle = "#F5F2EC"; ctx.fill();
+        ctx.beginPath(); ctx.moveTo(bx + w - 1, by + 10); ctx.lineTo(bx + w + 7, by + 15); ctx.lineTo(bx + w - 1, by + 20); ctx.fill();
+        ctx.fillStyle = "#15131A";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText(bocadillo.texto, bx + 10, by + 16);
+        ctx.textBaseline = "alphabetic";
+    }
+
+    if (jugando && t > fin) terminar();
+}
+
+function bucle() {
+    pintar();
+    requestAnimationFrame(bucle);
+}
+
+/* ---------- Menú ---------- */
+
+function pintarMenu() {
+    const cont = document.getElementById("canciones");
+    cont.replaceChildren(...CANCIONES.map((c, i) => {
+        let record = 0;
+        try { record = parseInt(localStorage.getItem("ritmo-" + c.id), 10) || 0; } catch (e) { }
+        const b = document.createElement("button");
+        b.className = "cancion";
+        b.style.setProperty("--c", c.color);
+        b.innerHTML = `<span class="nivel">${i + 1}</span><span><b>${c.nombre}</b><small>${c.nivel} · ${c.bpm} bpm${record ? ` · récord ${record}` : ""}</small></span>`;
+        b.addEventListener("click", () => empezar(c));
+        return b;
+    }));
+}
+
+document.getElementById("btnOtra").addEventListener("click", () => empezar(cancion));
+document.getElementById("btnMenu").addEventListener("click", () => {
+    document.getElementById("final").hidden = true;
+    pintarMenu();
+    document.getElementById("menu").hidden = false;
+});
+
+/* ---------- Controles ---------- */
+
+lienzo.addEventListener("pointerdown", e => {
+    e.preventDefault();
+    const r = lienzo.getBoundingClientRect();
+    const k = Math.floor((e.clientX - r.left) / (r.width / 4));
+    if (k >= 0 && k < 4) tocar(k);
+});
+
+window.addEventListener("keydown", e => {
+    if (e.repeat) return;
+    const k = CARRILES.findIndex(c => c.tecla.includes(e.code));
+    if (k >= 0) { e.preventDefault(); tocar(k); }
+});
+
+document.addEventListener("visibilitychange", () => { if (document.hidden) cortar(); });
+window.addEventListener("resize", medir);
+
+medir();
+pintarMenu();
+requestAnimationFrame(bucle);
+</script>
+
+</body>
+</html>
