@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#F3F2EF">
+<title>Cosas de Casa</title>
+
+<link rel="icon" type="image/png" href="./favicon.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="manifest" href="./manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Cosas de Casa">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,600..700,100&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+
+<style>
+:root {
+    --bg: #F3F2EF;
+    --surface: #FFFFFF;
+    --ink: #161616;
+    --muted: #7C7B78;
+    --line: #E7E5E1;
+    --soft: #ECEAE6;
+    --rojo: #D7263D;
+}
+
+* { box-sizing: border-box }
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    min-height: 100dvh;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+}
+
+main {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: max(36px, env(safe-area-inset-top)) 16px calc(32px + env(safe-area-inset-bottom));
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    min-height: 100dvh;
+}
+
+.marca {
+    text-align: center;
+    margin: 12px 0 34px;
+}
+
+.marca img {
+    display: block;
+    width: min(260px, 70vw);
+    height: auto;
+    margin: 0 auto 6px;
+}
+
+h1 {
+    margin: 0;
+    font-family: "Fraunces", Georgia, serif;
+    font-variation-settings: "SOFT" 100;
+    font-weight: 650;
+    font-size: 40px;
+    letter-spacing: -.025em;
+    line-height: 1.05;
+}
+
+.saludo {
+    margin: 10px 0 0;
+    color: var(--muted);
+    font-size: 16px;
+}
+
+.saludo::first-letter { text-transform: uppercase }
+
+.apps {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.app {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 18px 16px 16px;
+    background: var(--surface);
+    border-radius: 26px;
+    color: inherit;
+    text-decoration: none;
+    box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 10px 28px -14px rgba(0,0,0,.22);
+    transition: transform .15s, box-shadow .15s;
+    animation: entrar .35s cubic-bezier(.2,.9,.3,1.1) backwards;
+}
+
+.app:nth-child(2) { animation-delay: .06s }
+
+.app:hover { box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 14px 32px -14px rgba(0,0,0,.3) }
+.app:active { transform: scale(.975) }
+
+.app:focus-visible {
+    outline: 2.5px solid var(--ink);
+    outline-offset: 3px;
+}
+
+.app img {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 6px 16px -8px rgba(0,0,0,.45);
+}
+
+.app-texto {
+    flex: 1;
+    min-width: 0;
+}
+
+.app-texto strong {
+    display: block;
+    font-family: "Fraunces", Georgia, serif;
+    font-variation-settings: "SOFT" 100;
+    font-size: 22px;
+    font-weight: 650;
+    letter-spacing: -.015em;
+    line-height: 1.15;
+}
+
+.app-texto span {
+    display: block;
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 15px;
+}
+
+.flecha {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--soft);
+    transition: background .15s, color .15s;
+}
+
+.app:hover .flecha,
+.app:active .flecha {
+    background: var(--rojo);
+    color: #fff;
+}
+
+footer {
+    margin-top: auto;
+    padding-top: 40px;
+    text-align: center;
+    color: #A9A7A2;
+    font-size: 13px;
+}
+
+footer span {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    margin: 0 8px 2px;
+    border-radius: 50%;
+    background: var(--rojo);
+    opacity: .7;
+}
+
+@keyframes entrar {
+    from { opacity: 0; transform: translateY(10px) }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important }
+}
+</style>
+</head>
+
+<body>
+<main>
+
+    <header class="marca">
+        <img src="./logo.png" alt="" width="880" height="375">
+        <h1>Cosas de Casa</h1>
+        <p id="saludo" class="saludo">&nbsp;</p>
+    </header>
+
+    <nav class="apps" aria-label="Aplicaciones">
+        <a id="linkLista" class="app" href="#">
+            <img src="./lista.png" alt="">
+            <span class="app-texto">
+                <strong>Lista de la compra</strong>
+                <span>Lo que falta en casa</span>
+            </span>
+            <span class="flecha" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+            </span>
+        </a>
+
+        <a id="linkAgenda" class="app" href="#">
+            <img src="./agenda.png" alt="">
+            <span class="app-texto">
+                <strong>Agenda</strong>
+                <span>Citas y planes de todos</span>
+            </span>
+            <span class="flecha" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+            </span>
+        </a>
+    </nav>
+
+    <footer>Daniel<span></span>Diego<span></span>Macu<span></span>Marina</footer>
+
+</main>
+
+<script>
+// Direcciones de las dos apps en Vercel
+const APPS = {
+    lista: "https://LISTA-DE-LA-COMPRA.vercel.app",
+    agenda: "https://AGENDA.vercel.app"
+};
+
+document.getElementById("linkLista").href = APPS.lista;
+document.getElementById("linkAgenda").href = APPS.agenda;
+
+// Saludo según la hora + la fecha de hoy
+const ahora = new Date();
+const h = ahora.getHours();
+const saludo = h >= 6 && h < 14 ? "buenos días" : h >= 14 && h < 21 ? "buenas tardes" : "buenas noches";
+const fecha = new Intl.DateTimeFormat("es-ES", { weekday: "long", day: "numeric", month: "long" }).format(ahora);
+document.getElementById("saludo").textContent = `${saludo} · ${fecha}`;
+</script>
+
+</body>
+</html>
