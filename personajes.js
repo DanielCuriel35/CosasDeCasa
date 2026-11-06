@@ -34,12 +34,24 @@ const FAMILIA = [
     {
         nombre: "Macu",
         frase: "¡Arlo, que me dejes en paz!",
-        camiseta: "#EFE6D3", pantalon: "#E4DAC4", vel: 24,
+        camiseta: "#EDE3CF", pantalon: "#E2D6BE", vel: 24,
         detrasCabeza: "",
-        pelo: `<path d="M11 37Q7 9 32 9Q57 9 53 37Q52 41 48.5 41L49 26Q42 20 31 24Q22 20 15.5 28L16 41Q12 41 11 37Z" fill="#3D2B22"/>`,
+        // pelo corto oscuro, con flequillo de lado
+        pelo: `<path d="M12.5 33Q10 10 31 9Q52 8.5 51.5 29Q50 24 47 22.5Q45 26.5 41 26Q32 25 26 20.5Q22 25 16.5 26.5Q15 30 12.5 33Z" fill="#2B211D"/>
+               <path d="M26 20.5Q33 24.5 41 26" fill="none" stroke="#45362F" stroke-width="1.4" stroke-linecap="round"/>
+               <path d="M20 13Q27 9.5 35 11" fill="none" stroke="#45362F" stroke-width="1.4" stroke-linecap="round"/>
+               <circle cx="13.5" cy="41" r="2.6" fill="none" stroke="#C9A227" stroke-width="1.6"/>
+               <circle cx="50.5" cy="41" r="2.6" fill="none" stroke="#C9A227" stroke-width="1.6"/>`,
         cara: "",
-        gafas: { color: TINTA, grosor: 2, radio: 4 },
-        ropa: `<path d="M26 52.5l6 6 6-6" fill="none" stroke="#D6CBB3" stroke-width="2" stroke-linejoin="round"/>`
+        // gafas de pasta gris azulado
+        gafas: { color: "#4B5E72", grosor: 2.8, radio: 4 },
+        // collar largo con medalla y bolso blanco cruzado
+        ropa: `<path d="M27 51L32 62L37 51" fill="none" stroke="#3A2E28" stroke-width="1.2" stroke-linejoin="round"/>
+               <circle cx="32" cy="63.5" r="2.6" fill="#6B4A35" stroke="#3A2E28" stroke-width="1.2"/>
+               <path d="M43 51.5L21 69" stroke="${TINTA}" stroke-width="4.6" stroke-linecap="round"/>
+               <path d="M43 51.5L21 69" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round"/>
+               <rect x="11" y="66" width="16" height="12" rx="3" fill="#FFFFFF" stroke="${TINTA}" stroke-width="2"/>
+               <path d="M14 70h10" stroke="#C9C4BA" stroke-width="1.4" stroke-linecap="round"/>`
     },
     {
         nombre: "Marina",
@@ -96,4 +108,13 @@ function dibujo(p, { piernaA = null, piernaB = null } = {}) {
             ${p.ropa}
         </g>
     </svg>`;
+}
+
+// Solo la cabeza (para avatares pequeños)
+function retrato(p) {
+    return dibujo(p, { piernaA: 0, piernaB: 0 }).replace('viewBox="0 0 64 92"', 'viewBox="7 3 50 50"');
+}
+
+function personaje(nombre) {
+    return FAMILIA.find(p => p.nombre === nombre || (nombre === "Dani" && p.nombre === "Daniel")) || null;
 }
