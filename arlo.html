@@ -141,7 +141,7 @@ canvas {
         <canvas id="lienzo" aria-label="Arrastra hacia atrás y suelta para tirar la pelota"></canvas>
     </div>
 
-    <p class="ayuda">Arrastra hacia atrás y suelta, como un tirachinas. Tiene que rebotar justo las veces que pone arriba.</p>
+    <p class="ayuda">Arrastra hacia atrás y suelta, como un tirachinas. Cada ronda cambia el reto: míralo arriba.</p>
 
 </main>
 
@@ -223,6 +223,7 @@ const PARED = 16;               // grosor del rodapié
 const R = 11;                   // radio de la pelota
 
 // límites por donde se mueve la pelota
+const TOP = 74;
 let X1, X2, Y1, Y2, INICIO;
 
 function medir() {
@@ -233,20 +234,41 @@ function medir() {
     lienzo.height = Math.round(H * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     X1 = PARED + R; X2 = W - PARED - R;
-    Y1 = 74 + PARED + R; Y2 = H - PARED - R;
-    INICIO = { x: W / 2, y: H - 92 };
+    Y1 = TOP + PARED + R; Y2 = H - PARED - R;
 }
 
-/* ---------- Estado ---------- */
+/* ==========================================================
+   RETOS
+   Cada ronda sale un reto distinto, con muebles colocados al
+   azar y Diego tirando desde un sitio diferente.
+   ========================================================== */
+
+const RETOS = {
+    exacto: { texto: "REBOTES", valor: 1 },
+    alfombra: { texto: "REBOTES Y QUE PARE EN LA ALFOMBRA", valor: 2 },
+    cama: { texto: "REBOTES Y A LA CAMA DE ARLO", valor: 3 },
+    sinMuebles: { texto: "REBOTES SIN TOCAR LOS MUEBLES", valor: 2 },
+    soloMuebles: { texto: "SOLO CUENTAN LOS MUEBLES", valor: 2 }
+};
+
+const TIPOS_MUEBLE = [
+    { tipo: "sofa", w: 112, h: 42 },
+    { tipo: "mesa", w: 70, h: 50 },
+    { tipo: "caja", w: 48, h: 40 },
+    { tipo: "maceta", r: 19 },
+    { tipo: "puf", r: 22 }
+];
 
 const ROCE = 1.05;              // cuánto frena el suelo
 const ELASTICO = .86;           // cuánto conserva al rebotar
 const VMAX = 1250;
 
 let estado = "apuntar";         // apuntar | rueda | arlo-va | arlo-vuelve
-let pelota, objetivo, rebotes, racha = 0, puntos = 0;
+let ronda, proxima = null;
+let pelota, rebotes = 0, tocoMueble = false, racha = 0, puntos = 0, rondas = 0;
 let arrastre = null;            // { x0, y0, x, y }
 let arlo;                       // { x, y, dir, tiempo }
+let diego = { x: 0 };
 let mensaje = null;             // { texto, hasta, bien }
 let ladrido = null;             // { texto, hasta }
 
@@ -257,37 +279,221 @@ function guardarRecord(n) {
     try { localStorage.setItem("arlo-record", String(n)); } catch (e) { }
 }
 
-function nuevaRonda() {
-    // con racha alta piden más rebotes
-    const max = Math.min(6, 3 + Math.floor(racha / 2));
-    objetivo = 1 + Math.floor(Math.random() * max);
+/* ---------- Sacar números y retos sin que se repitan ---------- */
+
+function barajar(a) {
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+}
+
+// Una "bolsa" por tope: salen todos los números antes de repetir
+const bolsas = {};
+let ultimoN = 0;
+
+function sacarNumero(max) {
+    let b = bolsas[max];
+    const rellenar = () => (b = bolsas[max] = barajar(Array.from({ length: max }, (_, i) => i + 1)));
+    if (!b || !b.length) rellenar();
+    // el primero de la bolsa que no sea el de la ronda anterior
+    let i = b.length - 1;
+    while (i >= 0 && b[i] === ultimoN) i--;
+    if (i < 0) { rellenar(); i = b.length - 1; while (b[i] === ultimoN) i--; }
+    const n = b.splice(i, 1)[0];
+    ultimoN = n;
+    return n;
+}
+
+let ultimoReto = "", ultimaCol = .5;
+
+function elegirReto(nivel) {
+    const opciones = [
+        ["exacto", 3],
+        ["alfombra", 2.2],
+        ["sinMuebles", 2],
+        ["soloMuebles", nivel >= 1 ? 1.6 : 0],
+        ["cama", nivel >= 2 ? 1.6 : 0]
+    ].filter(([r, p]) => p > 0 && r !== ultimoReto);
+
+    let total = opciones.reduce((s, [, p]) => s + p, 0), x = Math.random() * total;
+    for (const [r, p] of opciones) { if ((x -= p) <= 0) return r; }
+    return opciones[0][0];
+}
+
+/* ---------- Colocar muebles y zonas ---------- */
+
+function cajaDe(m) {
+    return m.r
+        ? { x: m.fx * W - m.r, y: m.fy * H - m.r, w: m.r * 2, h: m.r * 2 }
+        : { x: m.fx * W, y: m.fy * H, w: m.w, h: m.h };
+}
+
+function seSolapan(a, b, margen) {
+    return a.x < b.x + b.w + margen && a.x + a.w + margen > b.x &&
+           a.y < b.y + b.h + margen && a.y + a.h + margen > b.y;
+}
+
+// zona donde se puede poner algo: entre el cartel y la zona de tiro
+function hueco() {
+    return { x0: PARED + 8, x1: W - PARED - 8, y0: TOP + PARED + 40, y1: H - 178 };
+}
+
+function colocar(cosa, ocupados, margen) {
+    const z = hueco(), b0 = cosa.r ? { w: cosa.r * 2, h: cosa.r * 2 } : { w: cosa.w, h: cosa.h };
+    if (z.x1 - z.x0 < b0.w || z.y1 - z.y0 < b0.h) return null;
+    for (let i = 0; i < 80; i++) {
+        const x = z.x0 + Math.random() * (z.x1 - z.x0 - b0.w);
+        const y = z.y0 + Math.random() * (z.y1 - z.y0 - b0.h);
+        const caja = { x, y, w: b0.w, h: b0.h };
+        if (ocupados.some(o => seSolapan(caja, o, margen))) continue;
+        ocupados.push(caja);
+        return cosa.r
+            ? { ...cosa, fx: (x + cosa.r) / W, fy: (y + cosa.r) / H }
+            : { ...cosa, fx: x / W, fy: y / H };
+    }
+    return null;
+}
+
+function crearRonda() {
+    const nivel = racha;
+    const primera = rondas === 0;
+    const reto = primera ? "exacto" : elegirReto(nivel);
+    ultimoReto = reto;
+
+    // cuántos muebles: más con racha, y los que pida el reto
+    let nMuebles = primera ? 0 : Math.floor(Math.random() * (Math.min(3, 1 + Math.floor(nivel / 2)) + 1));
+    if (reto === "sinMuebles") nMuebles = Math.max(nMuebles, 1 + (nivel >= 3 ? 1 : 0));
+    if (reto === "soloMuebles") nMuebles = Math.max(nMuebles, 2);
+
+    // tope de rebotes según reto y racha
+    let maxN = Math.min(7, 4 + Math.floor(nivel / 3));
+    if (reto === "soloMuebles") maxN = 3;
+    if (reto === "cama") maxN = 4;
+    const n = primera ? 2 : sacarNumero(maxN);
+
+    // desde dónde tira Diego (nunca dos veces seguidas el mismo sitio)
+    const cols = [.3, .5, .7].filter(c => c !== ultimaCol);
+    const colX = primera ? .5 : cols[Math.floor(Math.random() * cols.length)];
+    ultimaCol = colX;
+
+    const s = Math.min(1.2, Math.max(.85, W / 360));
+    const ocupados = [];
+    const muebles = [];
+    barajar([...TIPOS_MUEBLE]).slice(0, nMuebles).forEach(t => {
+        let m = t.r ? { tipo: t.tipo, r: Math.round(t.r * s) } : { tipo: t.tipo, w: Math.round(t.w * s), h: Math.round(t.h * s) };
+        if (!t.r && Math.random() < .4) m = { ...m, w: m.h, h: m.w };     // girado
+        const puesto = colocar(m, ocupados, 2 * R + 16);
+        if (puesto) muebles.push(puesto);
+    });
+
+    let zona = null;
+    if (reto === "alfombra") {
+        const w = Math.round((96 + Math.random() * 56) * s), h = Math.round((60 + Math.random() * 36) * s);
+        zona = colocar({ tipo: "alfombra", w, h }, ocupados, 6);
+    }
+    if (reto === "cama") zona = colocar({ tipo: "cama", r: Math.round(30 * s) }, ocupados, 6);
+
+    // si no hubo sitio para la zona, se queda en reto normal
+    const retoFinal = (reto === "alfombra" || reto === "cama") && !zona ? "exacto" : reto;
+    const mueblesOk = retoFinal === "soloMuebles" && muebles.length < 2 ? "exacto" : retoFinal;
+
+    return { reto: mueblesOk, n, colX, muebles, zona };
+}
+
+function inicioDe(r) {
+    return { x: Math.round(W * r.colX), y: H - 92 };
+}
+
+function sitioArlo(r) {
+    const ini = inicioDe(r), izq = r.colX > .5;
+    return { x: ini.x + (izq ? -56 : 56), y: ini.y + 30, dir: izq ? 1 : -1 };
+}
+
+function sitioDiego(r) {
+    const ini = inicioDe(r);
+    return r.colX > .5 ? ini.x + 30 : ini.x - 82;
+}
+
+function aplicarRonda(r) {
+    ronda = r;
+    proxima = null;
+    INICIO = inicioDe(r);
     rebotes = 0;
+    tocoMueble = false;
     pelota = { x: INICIO.x, y: INICIO.y, vx: 0, vy: 0 };
+    r.muebles.forEach(m => { m.golpe = 0; });
     estado = "apuntar";
 }
 
 function sentarArlo() {
-    arlo = { x: INICIO.x + 56, y: INICIO.y + 30, dir: -1, tiempo: 0, conPelota: false };
+    const s = sitioArlo(ronda);
+    arlo = { x: s.x, y: s.y, dir: s.dir, tiempo: 0, conPelota: false };
+    diego.x = sitioDiego(ronda);
 }
 
 /* ---------- Física ---------- */
+
+function chocarMueble(p, m) {
+    // Devuelve la velocidad del golpe (0 si no hay choque)
+    let nx, ny;
+    if (m.r) {
+        const cx = m.fx * W, cy = m.fy * H;
+        const dx = p.x - cx, dy = p.y - cy, d = Math.hypot(dx, dy);
+        if (d >= m.r + R) return 0;
+        nx = d ? dx / d : 0; ny = d ? dy / d : -1;
+        p.x = cx + nx * (m.r + R); p.y = cy + ny * (m.r + R);
+    } else {
+        const x = m.fx * W, y = m.fy * H;
+        const cx = Math.min(Math.max(p.x, x), x + m.w), cy = Math.min(Math.max(p.y, y), y + m.h);
+        const dx = p.x - cx, dy = p.y - cy, d = Math.hypot(dx, dy);
+        if (d >= R) return 0;
+        if (d > 0.001) {
+            nx = dx / d; ny = dy / d;
+            p.x = cx + nx * R; p.y = cy + ny * R;
+        } else {
+            // el centro se ha metido dentro: sale por el lado más cercano
+            const lados = [[p.x - x, -1, 0], [x + m.w - p.x, 1, 0], [p.y - y, 0, -1], [y + m.h - p.y, 0, 1]];
+            const [, lx, ly] = lados.sort((a, b) => a[0] - b[0])[0];
+            nx = lx; ny = ly;
+            if (lx) p.x = (lx < 0 ? x : x + m.w) + lx * R;
+            if (ly) p.y = (ly < 0 ? y : y + m.h) + ly * R;
+        }
+    }
+    const vn = p.vx * nx + p.vy * ny;
+    if (vn >= 0) return 0;
+    p.vx -= (1 + ELASTICO) * vn * nx;
+    p.vy -= (1 + ELASTICO) * vn * ny;
+    return -vn;
+}
+
+function contar() {
+    rebotes++;
+    if (navigator.vibrate) navigator.vibrate(12);
+}
 
 function mover(dt) {
     const p = pelota;
     p.x += p.vx * dt;
     p.y += p.vy * dt;
 
-    const golpe = (rapidez) => {
-        if (rapidez > 40) {
-            rebotes++;
-            if (navigator.vibrate) navigator.vibrate(12);
-        }
-    };
+    const paredCuenta = ronda.reto !== "soloMuebles";
+    const pared = rapidez => { if (rapidez > 40 && paredCuenta) contar(); };
 
-    if (p.x < X1) { p.x = X1; golpe(Math.abs(p.vx)); p.vx = Math.abs(p.vx) * ELASTICO; }
-    if (p.x > X2) { p.x = X2; golpe(Math.abs(p.vx)); p.vx = -Math.abs(p.vx) * ELASTICO; }
-    if (p.y < Y1) { p.y = Y1; golpe(Math.abs(p.vy)); p.vy = Math.abs(p.vy) * ELASTICO; }
-    if (p.y > Y2) { p.y = Y2; golpe(Math.abs(p.vy)); p.vy = -Math.abs(p.vy) * ELASTICO; }
+    if (p.x < X1) { p.x = X1; pared(Math.abs(p.vx)); p.vx = Math.abs(p.vx) * ELASTICO; }
+    if (p.x > X2) { p.x = X2; pared(Math.abs(p.vx)); p.vx = -Math.abs(p.vx) * ELASTICO; }
+    if (p.y < Y1) { p.y = Y1; pared(Math.abs(p.vy)); p.vy = Math.abs(p.vy) * ELASTICO; }
+    if (p.y > Y2) { p.y = Y2; pared(Math.abs(p.vy)); p.vy = -Math.abs(p.vy) * ELASTICO; }
+
+    for (const m of ronda.muebles) {
+        const rapidez = chocarMueble(p, m);
+        if (rapidez > 40) {
+            m.golpe = performance.now();
+            if (ronda.reto === "sinMuebles") tocoMueble = true;
+            else contar();
+        }
+    }
 
     const f = Math.exp(-ROCE * dt);
     p.vx *= f; p.vy *= f;
@@ -298,20 +504,38 @@ function mover(dt) {
     if (v < 9) { p.vx = 0; p.vy = 0; terminarTiro(); }
 }
 
+function dentroDeZona() {
+    const z = ronda.zona;
+    if (!z) return false;
+    if (z.r) return Math.hypot(pelota.x - z.fx * W, pelota.y - z.fy * H) <= z.r - 2;
+    const x = z.fx * W, y = z.fy * H;
+    return pelota.x >= x && pelota.x <= x + z.w && pelota.y >= y && pelota.y <= y + z.h;
+}
+
 function terminarTiro() {
     const ahora = performance.now();
-    if (rebotes === objetivo) {
+    const r = ronda, justo = rebotes === r.n;
+    let bien = false, texto;
+
+    if (r.reto === "sinMuebles" && tocoMueble) texto = "¡Has tocado un mueble!";
+    else if (!justo) texto = rebotes > r.n ? `¡Te has pasado! (${rebotes})` : `Te has quedado corto (${rebotes})`;
+    else if (r.reto === "alfombra" && !dentroDeZona()) texto = "Justo… pero fuera de la alfombra";
+    else if (r.reto === "cama" && !dentroDeZona()) texto = "Justo… pero no llega a la cama";
+    else {
+        bien = true;
+        texto = r.reto === "cama" ? "¡A la camita!" : r.reto === "alfombra" ? "¡En la alfombra!" : "¡Justo!";
+    }
+
+    if (bien) {
         racha++;
-        puntos++;
-        mensaje = { texto: "¡Justo!", hasta: ahora + 1800, bien: true };
+        puntos += RETOS[r.reto].valor;
         if (racha > leerRecord()) guardarRecord(racha);
     } else {
         racha = 0;
-        mensaje = {
-            texto: rebotes > objetivo ? `¡Te has pasado! (${rebotes})` : `Te has quedado corto (${rebotes})`,
-            hasta: ahora + 1800, bien: false
-        };
     }
+    rondas++;
+
+    mensaje = { texto, hasta: ahora + 1900, bien };
     txtPuntos.textContent = puntos;
     txtRecord.textContent = `Racha ${racha} · Mejor ${leerRecord()}`;
     txtRecord.title = "Racha actual y mejor racha";
@@ -346,26 +570,33 @@ function actualizar(dt) {
         // los pies de Arlo, para que la boca quede sobre la pelota
         let tx = pelota.x + lado * 40, ty = pelota.y + 26;
         tx = Math.min(Math.max(tx, 50), W - 50);
-        ty = Math.min(Math.max(ty, 74 + PARED + 34), H - PARED - 4);
+        ty = Math.min(Math.max(ty, TOP + PARED + 34), H - PARED - 4);
         if (andarHacia(tx, ty, dt)) {
             arlo.dir = pelota.x >= arlo.x ? 1 : -1;
             arlo.conPelota = true;
+            // ya se sabe la siguiente ronda: Arlo y Diego van a su sitio
+            proxima = crearRonda();
             estado = "arlo-vuelve";
         }
     }
 
     if (estado === "arlo-vuelve") {
-        const llegado = andarHacia(INICIO.x + 56, INICIO.y + 30, dt);
+        const s = sitioArlo(proxima);
+        const llegado = andarHacia(s.x, s.y, dt);
         const b = bocaDeArlo();
         pelota.x = b.x; pelota.y = b.y;
         if (llegado) {
-            arlo.dir = -1;
+            arlo.dir = s.dir;
             arlo.conPelota = false;
             ladrido = { texto: mensaje && mensaje.bien ? "¡Guau guau! 🐾" : "¡Otra, otra!", hasta: performance.now() + 1400 };
             arlo.contento = performance.now() + 1400;
-            nuevaRonda();
+            aplicarRonda(proxima);
         }
     }
+
+    // Diego se mueve despacito hacia su sitio
+    const objetivoDiego = sitioDiego(proxima || ronda);
+    diego.x += (objetivoDiego - diego.x) * Math.min(1, dt * 5);
 }
 
 /* ---------- Dibujo ---------- */
@@ -380,50 +611,168 @@ function rr(x, y, w, h, r) {
     ctx.closePath();
 }
 
-function pintarSala() {
+
+function trazo(relleno, grosor = 2.4) {
+    ctx.fillStyle = relleno;
+    ctx.fill();
+    ctx.lineWidth = grosor;
+    ctx.strokeStyle = TINTA;
+    ctx.stroke();
+}
+
+function pintarMueble(m, ahora) {
+    ctx.save();
+    ctx.lineJoin = "round";
+    // sombra
+    ctx.fillStyle = "rgba(0,0,0,.13)";
+    if (m.r) { ctx.beginPath(); ctx.arc(m.fx * W + 3, m.fy * H + 5, m.r, 0, Math.PI * 2); ctx.fill(); }
+    else { rr(m.fx * W + 3, m.fy * H + 5, m.w, m.h, 10); ctx.fill(); }
+
+    if (m.tipo === "sofa") {
+        const x = m.fx * W, y = m.fy * H, vertical = m.h > m.w;
+        rr(x, y, m.w, m.h, 12); trazo("#6E7B8B");
+        // respaldo y cojines
+        if (vertical) {
+            rr(x + 4, y + 4, 11, m.h - 8, 5); trazo("#5B6676", 1.8);
+            for (let i = 0; i < 2; i++) { rr(x + 18, y + 6 + i * (m.h - 12) / 2, m.w - 23, (m.h - 12) / 2 - 2, 6); trazo("#8593A3", 1.8); }
+        } else {
+            rr(x + 4, y + 4, m.w - 8, 11, 5); trazo("#5B6676", 1.8);
+            for (let i = 0; i < 2; i++) { rr(x + 6 + i * (m.w - 12) / 2, y + 18, (m.w - 12) / 2 - 2, m.h - 23, 6); trazo("#8593A3", 1.8); }
+        }
+    }
+    if (m.tipo === "mesa") {
+        const x = m.fx * W, y = m.fy * H;
+        rr(x, y, m.w, m.h, 8); trazo("#A0764B");
+        rr(x + 5, y + 5, m.w - 10, m.h - 10, 5); ctx.fillStyle = "#B88A5C"; ctx.fill();
+        // una taza encima
+        ctx.beginPath(); ctx.arc(x + m.w * .68, y + m.h * .42, 6, 0, Math.PI * 2); trazo("#FFFFFF", 1.8);
+        ctx.beginPath(); ctx.arc(x + m.w * .68, y + m.h * .42, 3, 0, Math.PI * 2); ctx.fillStyle = "#6B4226"; ctx.fill();
+    }
+    if (m.tipo === "caja") {
+        const x = m.fx * W, y = m.fy * H;
+        rr(x, y, m.w, m.h, 6); trazo("#7FB8D6");
+        ctx.strokeStyle = "#5E97B5"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(x + 6, y + m.h / 2); ctx.lineTo(x + m.w - 6, y + m.h / 2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(x + m.w * .3, y + m.h * .3, 4, 0, Math.PI * 2); trazo("#D7263D", 1.6);
+        ctx.beginPath(); ctx.arc(x + m.w * .7, y + m.h * .72, 4, 0, Math.PI * 2); trazo("#F6C836", 1.6);
+    }
+    if (m.tipo === "maceta") {
+        const cx = m.fx * W, cy = m.fy * H;
+        ctx.beginPath(); ctx.arc(cx, cy, m.r, 0, Math.PI * 2); trazo("#C2693E");
+        for (let i = 0; i < 5; i++) {
+            const a = i / 5 * Math.PI * 2 + .3;
+            ctx.beginPath(); ctx.ellipse(cx + Math.cos(a) * m.r * .42, cy + Math.sin(a) * m.r * .42, m.r * .42, m.r * .22, a, 0, Math.PI * 2);
+            trazo("#6BA368", 1.6);
+        }
+        ctx.beginPath(); ctx.arc(cx, cy, m.r * .2, 0, Math.PI * 2); ctx.fillStyle = "#4E8A4B"; ctx.fill();
+    }
+    if (m.tipo === "puf") {
+        const cx = m.fx * W, cy = m.fy * H;
+        ctx.beginPath(); ctx.arc(cx, cy, m.r, 0, Math.PI * 2); trazo("#F6C836");
+        ctx.strokeStyle = "#D9A91F"; ctx.lineWidth = 1.6;
+        for (let i = 0; i < 6; i++) {
+            const a = i / 6 * Math.PI * 2;
+            ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(a) * (m.r - 3), cy + Math.sin(a) * (m.r - 3)); ctx.stroke();
+        }
+        ctx.beginPath(); ctx.arc(cx, cy, 3.5, 0, Math.PI * 2); trazo("#D9A91F", 1.4);
+    }
+
+    // destello al golpear
+    const t = (ahora - (m.golpe || 0)) / 250;
+    if (t < 1) {
+        const c = cajaDe(m);
+        ctx.globalAlpha = 1 - t;
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = ronda.reto === "sinMuebles" ? "#D7263D" : "#FFFFFF";
+        if (m.r) { ctx.beginPath(); ctx.arc(m.fx * W, m.fy * H, m.r + 3 + t * 6, 0, Math.PI * 2); ctx.stroke(); }
+        else { rr(c.x - 3 - t * 5, c.y - 3 - t * 5, c.w + 6 + t * 10, c.h + 6 + t * 10, 12); ctx.stroke(); }
+        ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+}
+
+function pintarZona(ahora) {
+    const z = ronda.zona;
+    if (!z) return;
+    const dentro = estado === "rueda" && dentroDeZona();
+    ctx.save();
+    if (z.tipo === "alfombra") {
+        const x = z.fx * W, y = z.fy * H;
+        rr(x, y, z.w, z.h, 14);
+        ctx.fillStyle = dentro ? "rgba(215, 38, 61, .32)" : "rgba(215, 38, 61, .18)";
+        ctx.fill();
+        ctx.strokeStyle = "rgba(215, 38, 61, .75)";
+        ctx.setLineDash([6, 6]);
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+        ctx.setLineDash([]);
+        // flecos
+        ctx.strokeStyle = "rgba(215, 38, 61, .5)";
+        ctx.lineWidth = 1.6;
+        for (let fx = x + 10; fx < x + z.w - 6; fx += 8) {
+            ctx.beginPath(); ctx.moveTo(fx, y - 1); ctx.lineTo(fx, y - 6); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(fx, y + z.h + 1); ctx.lineTo(fx, y + z.h + 6); ctx.stroke();
+        }
+    }
+    if (z.tipo === "cama") {
+        const cx = z.fx * W, cy = z.fy * H;
+        const pulso = 1 + Math.sin(ahora / 260) * .04;
+        ctx.beginPath(); ctx.arc(cx, cy, z.r * pulso + 6, 0, Math.PI * 2);
+        trazo("#8A6A55");
+        ctx.beginPath(); ctx.arc(cx, cy, z.r * pulso - 2, 0, Math.PI * 2);
+        ctx.fillStyle = dentro ? "#F2D6A8" : "#E9DCC5";
+        ctx.fill();
+        // huellita
+        ctx.fillStyle = "rgba(107, 74, 53, .45)";
+        ctx.beginPath(); ctx.ellipse(cx, cy + 4, 7, 6, 0, 0, Math.PI * 2); ctx.fill();
+        [[-8, -5], [-3, -10], [3, -10], [8, -5]].forEach(([dx, dy]) => { ctx.beginPath(); ctx.arc(cx + dx, cy + dy, 2.6, 0, Math.PI * 2); ctx.fill(); });
+    }
+    ctx.restore();
+}
+
+function pintarSala(ahora) {
     // suelo de tarima
-    const top = 74;
     ctx.fillStyle = "#D8B98E";
-    ctx.fillRect(0, top, W, H - top);
+    ctx.fillRect(0, TOP, W, H - TOP);
     ctx.strokeStyle = "rgba(120, 85, 45, .22)";
     ctx.lineWidth = 1.5;
-    for (let y = top + 34, fila = 0; y < H; y += 34, fila++) {
+    for (let y = TOP + 34, fila = 0; y < H; y += 34, fila++) {
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
         for (let x = (fila % 2) * 70 + 40; x < W; x += 140) {
             ctx.beginPath(); ctx.moveTo(x, y - 34); ctx.lineTo(x, y); ctx.stroke();
         }
     }
 
-    // alfombra
-    rr(W * .18, top + (H - top) * .32, W * .64, (H - top) * .3, 18);
-    ctx.fillStyle = "rgba(215, 38, 61, .14)";
-    ctx.fill();
-    ctx.strokeStyle = "rgba(215, 38, 61, .3)";
-    ctx.setLineDash([6, 6]);
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.setLineDash([]);
+    pintarZona(ahora);
+    ronda.muebles.forEach(m => pintarMueble(m, ahora));
 
     // paredes (rodapié)
     ctx.fillStyle = "#F4EFE6";
-    ctx.fillRect(0, top, W, PARED);
-    ctx.fillRect(0, top, PARED, H - top);
-    ctx.fillRect(W - PARED, top, PARED, H - top);
+    ctx.fillRect(0, TOP, W, PARED);
+    ctx.fillRect(0, TOP, PARED, H - TOP);
+    ctx.fillRect(W - PARED, TOP, PARED, H - TOP);
     ctx.fillRect(0, H - PARED, W, PARED);
-    ctx.strokeStyle = "#1B1B1B";
+    ctx.strokeStyle = TINTA;
     ctx.lineWidth = 2.5;
-    ctx.strokeRect(PARED, top + PARED, W - PARED * 2, H - top - PARED * 2);
+    ctx.strokeRect(PARED, TOP + PARED, W - PARED * 2, H - TOP - PARED * 2);
+    if (ronda.reto === "soloMuebles") {
+        // paredes "apagadas": no cuentan
+        ctx.strokeStyle = "rgba(124, 123, 120, .55)";
+        ctx.setLineDash([4, 6]);
+        ctx.strokeRect(PARED + 4, TOP + PARED + 4, W - PARED * 2 - 8, H - TOP - PARED * 2 - 8);
+        ctx.setLineDash([]);
+    }
 
     // cartel de arriba
     ctx.fillStyle = "#FFFFFF";
-    ctx.fillRect(0, 0, W, top);
+    ctx.fillRect(0, 0, W, TOP);
     ctx.textAlign = "center";
     ctx.fillStyle = "#7C7B78";
     ctx.font = "700 12px 'DM Sans', system-ui, sans-serif";
-    ctx.fillText("REBOTES", W / 2, 22);
+    ctx.fillText(RETOS[ronda.reto].texto, W / 2, 20);
 
     // círculos: tantos como el objetivo, rellenos según los rebotes
-    const n = objetivo, tam = 22, hueco = 8;
+    const n = ronda.n, tam = n > 5 ? 18 : 22, hueco = n > 5 ? 6 : 8;
     const ancho = n * tam + (n - 1) * hueco;
     for (let i = 0; i < n; i++) {
         const cx = W / 2 - ancho / 2 + i * (tam + hueco) + tam / 2;
@@ -431,22 +780,25 @@ function pintarSala() {
         ctx.fillStyle = i < rebotes ? "#D7263D" : "#ECEAE6";
         ctx.fill();
         ctx.lineWidth = 2;
-        ctx.strokeStyle = "#1B1B1B";
+        ctx.strokeStyle = TINTA;
         ctx.stroke();
     }
     if (rebotes > n) {
         ctx.fillStyle = "#D7263D";
         ctx.font = "800 15px 'DM Sans', system-ui, sans-serif";
-        ctx.fillText(`+${rebotes - n}`, W / 2 + ancho / 2 + 22, 51);
+        ctx.fillText(`+${rebotes - n}`, W / 2 + ancho / 2 + 20, 51);
     }
-    ctx.fillStyle = "#1B1B1B";
+    ctx.fillStyle = TINTA;
     ctx.font = "800 26px 'DM Sans', system-ui, sans-serif";
     ctx.textAlign = "left";
-    ctx.fillText(objetivo, 18, 52);
+    ctx.fillText(n, 18, 55);
     ctx.textAlign = "right";
     ctx.fillStyle = "#7C7B78";
     ctx.font = "700 13px 'DM Sans', system-ui, sans-serif";
-    ctx.fillText(`llevas ${rebotes}`, W - 18, 50);
+    ctx.fillText(`llevas ${rebotes}`, W - 16, 44);
+    ctx.fillStyle = "#D7263D";
+    ctx.font = "800 12px 'DM Sans', system-ui, sans-serif";
+    ctx.fillText(`vale +${RETOS[ronda.reto].valor}`, W - 16, 62);
     ctx.textAlign = "left";
 }
 
@@ -457,7 +809,7 @@ function pintarPelota(p) {
     ctx.fillStyle = "#D7E34A";               // pelota de tenis
     ctx.fill();
     ctx.lineWidth = 2.2;
-    ctx.strokeStyle = "#1B1B1B";
+    ctx.strokeStyle = TINTA;
     ctx.stroke();
     ctx.strokeStyle = "#FFFFFF";
     ctx.lineWidth = 1.8;
@@ -486,9 +838,9 @@ function bocadillo(texto, cx, abajo, oscuro = true) {
     const w = ctx.measureText(texto).width + 22, h = 32;
     const x = Math.min(Math.max(cx - w / 2, 8), W - w - 8), y = abajo - h - 8;
     rr(x, y, w, h, 13);
-    ctx.fillStyle = oscuro ? "#1B1B1B" : "#FFFFFF"; ctx.fill();
+    ctx.fillStyle = oscuro ? TINTA : "#FFFFFF"; ctx.fill();
     ctx.beginPath(); ctx.moveTo(cx - 6, y + h - 1); ctx.lineTo(cx, y + h + 7); ctx.lineTo(cx + 6, y + h - 1); ctx.fill();
-    ctx.fillStyle = oscuro ? "#fff" : "#1B1B1B";
+    ctx.fillStyle = oscuro ? "#fff" : TINTA;
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
     ctx.fillText(texto, x + 11, y + h / 2 + 1);
@@ -497,11 +849,11 @@ function bocadillo(texto, cx, abajo, oscuro = true) {
 
 function pintar(ahora) {
     ctx.clearRect(0, 0, W, H);
-    pintarSala();
+    pintarSala(ahora);
 
     // Diego, el que tira
     const dw = 52, dh = 75;
-    if (imgDiego.complete) ctx.drawImage(imgDiego, INICIO.x - 82, INICIO.y - 22, dw, dh);
+    if (imgDiego.complete) ctx.drawImage(imgDiego, diego.x, H - 92 - 22, dw, dh);
 
     // Arlo y la pelota (lo que esté más abajo se pinta encima)
     if (estado === "arlo-vuelve") {
@@ -527,7 +879,7 @@ function pintar(ahora) {
             ctx.beginPath(); ctx.moveTo(pelota.x + ux * (R + 6), pelota.y + uy * (R + 6)); ctx.lineTo(ex, ey); ctx.stroke();
             ctx.setLineDash([]);
             const a = Math.atan2(uy, ux);
-            ctx.fillStyle = "#1B1B1B";
+            ctx.fillStyle = TINTA;
             ctx.beginPath();
             ctx.moveTo(ex + Math.cos(a) * 10, ey + Math.sin(a) * 10);
             ctx.lineTo(ex + Math.cos(a + 2.5) * 10, ey + Math.sin(a + 2.5) * 10);
@@ -536,11 +888,11 @@ function pintar(ahora) {
             // barrita de fuerza
             rr(W - 30, H - 130, 10, 100, 5); ctx.fillStyle = "rgba(255,255,255,.7)"; ctx.fill();
             const fh = 100 * d / 170;
-            rr(W - 30, H - 30 - fh, 10, fh, 5); ctx.fillStyle = "#1B1B1B"; ctx.fill();
+            rr(W - 30, H - 30 - fh, 10, fh, 5); ctx.fillStyle = TINTA; ctx.fill();
         }
     }
 
-    if (estado === "apuntar" && !arrastre && puntos === 0 && racha === 0 && !mensaje) {
+    if (estado === "apuntar" && !arrastre && rondas === 0) {
         bocadillo("Arrastra hacia atrás y suelta", W / 2, INICIO.y - 30, false);
     }
 
@@ -549,11 +901,15 @@ function pintar(ahora) {
     if (mensaje && ahora < mensaje.hasta) {
         ctx.save();
         ctx.textAlign = "center";
-        ctx.font = "650 28px 'Fraunces', Georgia, serif";
+        // que quepa siempre a lo ancho
+        let tam = 28;
+        ctx.font = `650 ${tam}px 'Fraunces', Georgia, serif`;
+        const ancho = ctx.measureText(mensaje.texto).width;
+        if (ancho > W - 36) { tam = Math.floor(tam * (W - 36) / ancho); ctx.font = `650 ${tam}px 'Fraunces', Georgia, serif`; }
         ctx.lineWidth = 6;
-        ctx.strokeStyle = "rgba(255,255,255,.9)";
+        ctx.strokeStyle = "rgba(255,255,255,.92)";
         ctx.strokeText(mensaje.texto, W / 2, 132);
-        ctx.fillStyle = mensaje.bien ? "#1B1B1B" : "#D7263D";
+        ctx.fillStyle = mensaje.bien ? TINTA : "#D7263D";
         ctx.fillText(mensaje.texto, W / 2, 132);
         ctx.restore();
     }
@@ -603,6 +959,7 @@ function soltar() {
     pelota.vx = dx / d * v;
     pelota.vy = dy / d * v;
     rebotes = 0;
+    tocoMueble = false;
     mensaje = null;
     estado = "rueda";
 }
@@ -612,13 +969,13 @@ sala.addEventListener("pointercancel", () => { arrastre = null; });
 
 window.addEventListener("resize", () => {
     medir();
-    if (estado === "apuntar") { pelota.x = INICIO.x; pelota.y = INICIO.y; }
-    sentarArlo();
+    INICIO = inicioDe(ronda);
+    if (estado === "apuntar") { pelota.x = INICIO.x; pelota.y = INICIO.y; sentarArlo(); }
 });
 
 medir();
+aplicarRonda(crearRonda());
 sentarArlo();
-nuevaRonda();
 txtRecord.textContent = `Mejor racha ${leerRecord()}`;
 requestAnimationFrame(bucle);
 </script>
